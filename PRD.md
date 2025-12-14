@@ -1,18 +1,23 @@
 # Product Requirements Document: Automated Multi-Platform Trading Bot
 
-**Version:** 1.0
+**Version:** 1.1
 **Date:** December 13, 2025
-**Status:** Draft
+**Status:** Implementation In Progress
+
+> **⚠️ PLATFORM UPDATE**: This project now uses **Alpaca API** instead of Robinhood/Coinbase.
+> Alpaca provides a unified API for both stocks and crypto, superior paper trading support,
+> and is purpose-built for algorithmic trading. This change was made during Phase 1 implementation
+> for better API reliability, documentation, and development experience.
 
 ---
 
 ## Executive Summary
 
-This document outlines the requirements for developing an intelligent, automated trading bot that operates across two major platforms:
-- **Robinhood** for stock trading
-- **Coinbase** for cryptocurrency trading
+This document outlines the requirements for developing an intelligent, automated trading bot that operates on **Alpaca** for both stock and cryptocurrency trading (originally planned for Robinhood + Coinbase).
 
 The bot will leverage multiple data sources including market data, news sentiment, social media analysis (Reddit, X.com), and technical indicators to make informed trading decisions with the goal of automated portfolio growth through effective, data-driven strategies.
+
+**Current Status**: Phase 1 Foundation complete. Bot operational in paper trading mode with Simple Momentum strategy.
 
 ---
 
