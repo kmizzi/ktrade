@@ -17,7 +17,7 @@ This document outlines the requirements for developing an intelligent, automated
 
 The bot will leverage multiple data sources including market data, news sentiment, social media analysis (Reddit, X.com), and technical indicators to make informed trading decisions with the goal of automated portfolio growth through effective, data-driven strategies.
 
-**Current Status**: Phase 1 Foundation complete. Bot operational in paper trading mode with Simple Momentum strategy.
+**Current Status**: Phase 1.2 In Progress - Dynamic stock discovery implemented. Bot autonomously finds hot stocks based on technical criteria.
 
 ---
 
@@ -118,25 +118,92 @@ Create an automated trading system that consistently grows the portfolio through
 
 ## 5. Core Features & Requirements
 
-### 5.1 Multi-Platform Integration
+### 5.1 Platform Integration: Alpaca API
 
-#### Robinhood Integration (Stocks)
-- **API Connection**: Integrate with official Robinhood Crypto API and third-party stock APIs (TradersPost integration)
-- **Capabilities**:
-  - Real-time portfolio balance and position tracking
-  - Market order execution (buy/sell)
-  - Limit order execution
-  - Fetch real-time market data and quotes
-  - Access to account history and transaction logs
+> **Implementation Note**: Using Alpaca API for unified stock and crypto trading.
 
-#### Coinbase Integration (Crypto)
-- **API Connection**: Integrate with Coinbase Advanced Trade API
-- **Capabilities**:
-  - Access to 550+ crypto markets including 237 USDC pairs
-  - WebSocket feeds for real-time price data
-  - Order execution with multiple order types
-  - Portfolio and balance management
-  - Rate limit compliance (10 requests/second)
+**API Connection**: Alpaca Trading API + Market Data API
+**Capabilities**:
+- Real-time portfolio balance and position tracking
+- Market and limit order execution (stocks + crypto)
+- Historical and real-time market data
+- Paper trading mode for safe testing
+- Access to 1000s of stocks + major crypto pairs
+- WebSocket support for real-time data streaming
+
+**Benefits over Original Design**:
+- Single API for both stocks and crypto (simpler architecture)
+- Purpose-built for algorithmic trading
+- Superior paper trading implementation
+- Better API documentation and reliability
+- No rate limit issues with paper trading
+
+### 5.1a **Autonomous Stock Discovery** ✨ NEW
+
+**Problem Addressed**: Original design had hardcoded watchlist - bot couldn't discover hot stocks autonomously.
+
+**Solution**: Dynamic stock scanner that finds trading opportunities using technical criteria.
+
+#### Stock Universe Scanning
+- **Curated Universe**: 60+ liquid stocks across sectors (Tech, Finance, Healthcare, Energy, Meme stocks)
+- **Daily Refresh**: New watchlist generated at market open
+- **Real-time Analysis**: Continuous evaluation during trading hours
+
+#### Discovery Methods
+
+**1. Top Gainers Detection**
+- Identify stocks with highest daily % gains
+- Minimum criteria: Price > $5, Volume > 1M shares
+- Top 10 gainers selected daily
+- Example: MRK +3.84%, NFLX, TMO
+
+**2. Volume Spike Detection**
+- Find unusual volume activity (2x+ average)
+- 20-day volume baseline comparison
+- Indicates institutional interest or news catalyst
+- Example: AVGO with 3.58x normal volume (95M vs 27M avg)
+
+**3. Technical Breakouts**
+- 50-day high breakout identification
+- Price momentum confirmation
+- Volume validation required
+- Catches stocks in strong uptrends
+
+**4. Crypto Inclusion**
+- Always include BTC/USD and ETH/USD
+- Provides portfolio diversification
+- 24/7 trading opportunities
+
+#### Dynamic Watchlist Output
+- **Size**: Up to 20 stocks (configurable)
+- **Composition**: Gainers + Volume Spikes + Breakouts + Crypto
+- **Refresh**: Daily at market open, hourly updates optional
+- **Filtering**: Excludes low-price (<$5) and low-volume (<1M) stocks
+
+#### Example Watchlist (Dec 13, 2025)
+```
+Top Gainers: MRK, NFLX, TMO, PFE, XOM
+High Volume: AVGO (3.58x), RIVN, GE
+Crypto: BTC/USD, ETH/USD
+Final List: 14 stocks ready for strategy evaluation
+```
+
+**Configuration Options** (`.env`):
+```bash
+ENABLE_DYNAMIC_DISCOVERY=true  # Enable/disable autonomous discovery
+MAX_WATCHLIST_SIZE=20           # Maximum stocks in watchlist
+MIN_STOCK_PRICE=5.0             # Minimum stock price filter
+MIN_DAILY_VOLUME=1000000        # Minimum daily volume filter
+TOP_GAINERS_COUNT=10            # Number of top gainers
+TOP_VOLUME_COUNT=10             # Number of volume spike stocks
+```
+
+**Future Enhancements** (Phase 2+):
+- Reddit mention tracking (r/wallstreetbets, r/stocks)
+- X.com (Twitter) trending ticker detection
+- News catalyst integration
+- Sentiment-weighted stock selection
+- ML-based opportunity scoring
 
 ### 5.2 Data Collection & Processing
 

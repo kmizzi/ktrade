@@ -4,6 +4,11 @@ An intelligent, automated trading bot that operates on **Alpaca** for both stock
 
 ## Features
 
+- **🎯 Autonomous Stock Discovery**: Bot finds hot stocks automatically using technical criteria
+  - Top gainers detection
+  - Volume spike identification
+  - Technical breakout scanning
+  - Dynamic watchlist generation (up to 20 stocks)
 - **Multi-Asset Support**: Trade stocks and crypto through unified Alpaca API
 - **Paper Trading**: Safe testing environment with Alpaca paper trading
 - **Multiple Strategies**: Simple Momentum, DCA, Grid Trading, Sentiment-Momentum
@@ -186,8 +191,16 @@ DAILY_LOSS_LIMIT_PCT=3.0
 DEFAULT_STOP_LOSS_PCT=5.0
 ```
 
-### Watchlist
+### Stock Discovery
 ```bash
+ENABLE_DYNAMIC_DISCOVERY=true  # Autonomous stock finding
+MAX_WATCHLIST_SIZE=20           # Max stocks in watchlist
+MIN_STOCK_PRICE=5.0             # Minimum price filter
+MIN_DAILY_VOLUME=1000000        # Minimum volume filter
+TOP_GAINERS_COUNT=10            # Top gainers to include
+TOP_VOLUME_COUNT=10             # High volume stocks
+
+# Static Watchlist (fallback if discovery disabled)
 WATCHLIST_STOCKS=AAPL,MSFT,GOOGL,AMZN,TSLA
 WATCHLIST_CRYPTO=BTC/USD,ETH/USD
 ```
@@ -196,10 +209,20 @@ WATCHLIST_CRYPTO=BTC/USD,ETH/USD
 
 The bot runs on a schedule:
 
-- **Market Open (9:30 AM ET)**: Reset daily tracking, sync positions
-- **Every 15 minutes (9:30 AM - 4:00 PM ET)**: Evaluate strategies, execute signals, monitor positions
+- **Market Open (9:30 AM ET)**: Generate fresh watchlist, reset daily tracking, sync positions
+- **Every 15 minutes (9:30 AM - 4:00 PM ET)**: Evaluate strategies on dynamic watchlist, execute signals, monitor positions
 - **Every hour**: Sync portfolio with Alpaca
 - **Market Close (4:00 PM ET)**: Save portfolio snapshot, log performance
+
+### How Stock Discovery Works
+
+At market open, the bot:
+1. Scans 60+ liquid stocks across sectors
+2. Identifies top gainers (e.g., MRK +3.84%)
+3. Finds volume spikes (e.g., AVGO 3.58x normal volume)
+4. Detects technical breakouts (50-day highs)
+5. Combines best opportunities into dynamic watchlist (up to 20 stocks)
+6. Evaluates these stocks every 15 minutes during trading hours
 
 ## Development Status
 
@@ -213,6 +236,7 @@ The bot runs on a schedule:
 - [x] Order execution engine
 - [x] Portfolio tracking
 - [x] Main bot runner with scheduling
+- [x] **Autonomous stock discovery** (Phase 1.2)
 
 ### 🚧 Phase 1.2: Additional Strategies (Next)
 - [ ] DCA strategy implementation

@@ -248,14 +248,20 @@ class AlpacaClient:
                 end = datetime.now()
 
             # Map timeframe string to TimeFrame enum
-            timeframe_map = {
-                "1Min": TimeFrame.Minute,
-                "5Min": TimeFrame.Minute * 5,
-                "15Min": TimeFrame.Minute * 15,
-                "1Hour": TimeFrame.Hour,
-                "1Day": TimeFrame.Day,
-            }
-            tf = timeframe_map.get(timeframe, TimeFrame.Day)
+            if timeframe == "1Min":
+                tf = TimeFrame.Minute
+            elif timeframe == "5Min":
+                tf = TimeFrame.Minute
+                # Note: For 5Min need to aggregate client-side or use different approach
+            elif timeframe == "15Min":
+                tf = TimeFrame.Minute
+                # Note: For 15Min need to aggregate client-side or use different approach
+            elif timeframe == "1Hour":
+                tf = TimeFrame.Hour
+            elif timeframe == "1Day":
+                tf = TimeFrame.Day
+            else:
+                tf = TimeFrame.Day
 
             if is_crypto:
                 request = CryptoBarsRequest(

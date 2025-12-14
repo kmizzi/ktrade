@@ -61,7 +61,33 @@ class Settings(BaseSettings):
         description="Default stop loss percentage"
     )
 
-    # Watchlist
+    # Stock Discovery Settings
+    enable_dynamic_discovery: bool = Field(
+        default=True,
+        description="Enable dynamic stock discovery vs static watchlist"
+    )
+    max_watchlist_size: int = Field(
+        default=20,
+        description="Maximum number of stocks in dynamic watchlist"
+    )
+    min_stock_price: float = Field(
+        default=5.0,
+        description="Minimum stock price for screening"
+    )
+    min_daily_volume: int = Field(
+        default=1000000,
+        description="Minimum daily volume for screening"
+    )
+    top_gainers_count: int = Field(
+        default=10,
+        description="Number of top gainers to include"
+    )
+    top_volume_count: int = Field(
+        default=10,
+        description="Number of high volume stocks to include"
+    )
+
+    # Static Watchlist (fallback)
     watchlist_stocks: str = Field(
         default="AAPL,MSFT,GOOGL,AMZN,TSLA",
         description="Comma-separated list of stock symbols"

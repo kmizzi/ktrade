@@ -26,6 +26,7 @@ from src.core.risk_manager import risk_manager
 from src.core.order_executor import order_executor
 from src.core.portfolio import portfolio_tracker
 from src.api.alpaca_client import alpaca_client
+from src.data.stock_scanner import stock_scanner
 
 # Setup logging
 logger = setup_logging()
@@ -63,6 +64,16 @@ def market_open_tasks():
         finally:
             db.close()
 
+        # Generate fresh watchlist for the day
+        if settings.enable_dynamic_discovery:
+            logger.info("generating_fresh_watchlist_for_trading_day")
+            watchlist = stock_scanner.get_dynamic_watchlist()
+            logger.info(
+                "daily_watchlist_generated",
+                watchlist_size=len(watchlist),
+                symbols=watchlist
+            )
+
         logger.info("market_open_tasks_completed")
 
     except Exception as e:
@@ -98,8 +109,15 @@ def evaluate_strategies():
     try:
         db = get_db_session()
         try:
-            watchlist = settings.get_full_watchlist()
-            logger.info("evaluating_watchlist", symbols=watchlist, strategy_count=len(strategies))
+            # Get dynamic watchlist from stock scanner
+            watchlist = stock_scanner.get_watchlist()
+            logger.info(
+                "evaluating_watchlist",
+                symbols=watchlist,
+                strategy_count=len(strategies),
+                watchlist_size=len(watchlist),
+                dynamic_discovery=settings.enable_dynamic_discovery
+            )
 
             all_signals = []
 
