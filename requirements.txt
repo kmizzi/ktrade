@@ -18,8 +18,9 @@ pandas>=2.0.0
 numpy>=1.24.0
 
 # Technical Analysis
-pandas-ta>=0.3.14b0
-ta-lib>=0.4.28
+# Note: ta-lib requires system-level installation: brew install ta-lib
+# Using pandas-ta as fallback
+ta>=0.11.0
 
 # Logging
 structlog>=23.1.0

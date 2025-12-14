@@ -1,11 +1,10 @@
 """
-Technical indicators calculation using pandas-ta.
+Technical indicators calculation using ta library.
 Provides common indicators for trading strategies.
 """
 
 from typing import List, Dict, Any
 import pandas as pd
-import pandas_ta as ta
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -22,7 +21,18 @@ def calculate_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
     Returns:
         Series of RSI values
     """
-    return ta.rsi(prices, length=period)
+    # Calculate price changes
+    delta = prices.diff()
+
+    # Separate gains and losses
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+
+    # Calculate RS and RSI
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+
+    return rsi
 
 
 def calculate_sma(prices: pd.Series, period: int = 20) -> pd.Series:
@@ -36,7 +46,7 @@ def calculate_sma(prices: pd.Series, period: int = 20) -> pd.Series:
     Returns:
         Series of SMA values
     """
-    return ta.sma(prices, length=period)
+    return prices.rolling(window=period).mean()
 
 
 def calculate_ema(prices: pd.Series, period: int = 20) -> pd.Series:
@@ -50,7 +60,7 @@ def calculate_ema(prices: pd.Series, period: int = 20) -> pd.Series:
     Returns:
         Series of EMA values
     """
-    return ta.ema(prices, length=period)
+    return prices.ewm(span=period, adjust=False).mean()
 
 
 def calculate_macd(prices: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> pd.DataFrame:
@@ -66,7 +76,18 @@ def calculate_macd(prices: pd.Series, fast: int = 12, slow: int = 26, signal: in
     Returns:
         DataFrame with MACD, signal, and histogram columns
     """
-    return ta.macd(prices, fast=fast, slow=slow, signal=signal)
+    ema_fast = calculate_ema(prices, fast)
+    ema_slow = calculate_ema(prices, slow)
+
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    histogram = macd_line - signal_line
+
+    return pd.DataFrame({
+        f'MACD_{fast}_{slow}_{signal}': macd_line,
+        f'MACDs_{fast}_{slow}_{signal}': signal_line,
+        f'MACDh_{fast}_{slow}_{signal}': histogram
+    })
 
 
 def calculate_bollinger_bands(prices: pd.Series, period: int = 20, std: float = 2.0) -> pd.DataFrame:
@@ -81,7 +102,17 @@ def calculate_bollinger_bands(prices: pd.Series, period: int = 20, std: float = 
     Returns:
         DataFrame with upper, middle, and lower bands
     """
-    return ta.bbands(prices, length=period, std=std)
+    middle = calculate_sma(prices, period)
+    std_dev = prices.rolling(window=period).std()
+
+    upper = middle + (std_dev * std)
+    lower = middle - (std_dev * std)
+
+    return pd.DataFrame({
+        f'BBU_{period}_{std}': upper,
+        f'BBM_{period}_{std}': middle,
+        f'BBL_{period}_{std}': lower
+    })
 
 
 def calculate_vwap(df: pd.DataFrame) -> pd.Series:
@@ -94,7 +125,9 @@ def calculate_vwap(df: pd.DataFrame) -> pd.Series:
     Returns:
         Series of VWAP values
     """
-    return ta.vwap(df['high'], df['low'], df['close'], df['volume'])
+    typical_price = (df['high'] + df['low'] + df['close']) / 3
+    vwap = (typical_price * df['volume']).cumsum() / df['volume'].cumsum()
+    return vwap
 
 
 def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
@@ -108,7 +141,14 @@ def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     Returns:
         Series of ATR values
     """
-    return ta.atr(df['high'], df['low'], df['close'], length=period)
+    high_low = df['high'] - df['low']
+    high_close = (df['high'] - df['close'].shift()).abs()
+    low_close = (df['low'] - df['close'].shift()).abs()
+
+    true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    atr = true_range.rolling(window=period).mean()
+
+    return atr
 
 
 def calculate_stochastic(df: pd.DataFrame, k_period: int = 14, d_period: int = 3) -> pd.DataFrame:
@@ -123,7 +163,16 @@ def calculate_stochastic(df: pd.DataFrame, k_period: int = 14, d_period: int = 3
     Returns:
         DataFrame with %K and %D values
     """
-    return ta.stoch(df['high'], df['low'], df['close'], k=k_period, d=d_period)
+    low_min = df['low'].rolling(window=k_period).min()
+    high_max = df['high'].rolling(window=k_period).max()
+
+    k = 100 * ((df['close'] - low_min) / (high_max - low_min))
+    d = k.rolling(window=d_period).mean()
+
+    return pd.DataFrame({
+        f'STOCHk_{k_period}_{d_period}': k,
+        f'STOCHd_{k_period}_{d_period}': d
+    })
 
 
 def calculate_all_indicators(bars: List[Dict[str, Any]]) -> pd.DataFrame:
