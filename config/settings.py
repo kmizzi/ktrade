@@ -58,7 +58,27 @@ class Settings(BaseSettings):
     )
     default_stop_loss_pct: float = Field(
         default=5.0,
-        description="Default stop loss percentage"
+        description="Default hard stop loss percentage (protects against gap-downs)"
+    )
+    trailing_stop_pct: float = Field(
+        default=7.0,
+        description="Trailing stop percentage (trails price up, allows bigger gains)"
+    )
+    tightened_trailing_stop_pct: float = Field(
+        default=2.5,
+        description="Tighter trailing stop % when SELL signal fires on profitable position"
+    )
+    use_trailing_stops: bool = Field(
+        default=True,
+        description="Use trailing stops instead of fixed take-profit"
+    )
+    take_profit_pct: float = Field(
+        default=10.0,
+        description="Take profit percentage for fractional share positions (monitored by bot)"
+    )
+    prefer_whole_shares: bool = Field(
+        default=True,
+        description="Round down to whole shares to enable trailing stops (Alpaca limitation)"
     )
 
     # Stock Discovery Settings
@@ -99,7 +119,7 @@ class Settings(BaseSettings):
 
     # Scheduling (in minutes)
     market_data_interval: int = Field(default=5, description="Market data fetch interval")
-    strategy_eval_interval: int = Field(default=15, description="Strategy evaluation interval")
+    strategy_eval_interval: int = Field(default=5, description="Strategy evaluation interval in minutes")
     portfolio_sync_interval: int = Field(default=60, description="Portfolio sync interval")
 
     @field_validator("bot_mode")
@@ -120,7 +140,7 @@ class Settings(BaseSettings):
             raise ValueError(f"log_level must be one of {valid_levels}")
         return v_upper
 
-    @field_validator("max_position_size_pct", "max_portfolio_exposure_pct", "daily_loss_limit_pct", "default_stop_loss_pct")
+    @field_validator("max_position_size_pct", "max_portfolio_exposure_pct", "daily_loss_limit_pct", "default_stop_loss_pct", "trailing_stop_pct")
     @classmethod
     def validate_percentages(cls, v: float) -> float:
         """Validate percentage values"""

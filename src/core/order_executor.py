@@ -43,6 +43,28 @@ class OrderExecutor:
             symbol = signal.symbol
             confidence = signal.confidence
 
+            # Check if we already have a position in this symbol
+            existing_positions = alpaca_client.get_positions()
+            for pos in existing_positions:
+                if pos['symbol'] == symbol:
+                    logger.info(
+                        "skipping_buy_already_have_position",
+                        symbol=symbol,
+                        existing_qty=pos['qty']
+                    )
+                    return None
+
+            # Check if we already have a pending buy order for this symbol
+            open_orders = alpaca_client.get_open_orders()
+            for order in open_orders:
+                if order['symbol'] == symbol and order['side'] == 'buy':
+                    logger.info(
+                        "skipping_buy_pending_order_exists",
+                        symbol=symbol,
+                        order_id=order['id']
+                    )
+                    return None
+
             # Get current price
             bars = alpaca_client.get_bars(symbol, timeframe="1Min", limit=1)
             if not bars:
@@ -77,7 +99,7 @@ class OrderExecutor:
                 )
                 return None
 
-            # Place order
+            # Place market order for entry
             order = alpaca_client.place_market_order(
                 symbol=symbol,
                 qty=quantity,
@@ -85,7 +107,7 @@ class OrderExecutor:
             )
 
             logger.info(
-                "buy_order_placed",
+                "entry_order_placed",
                 symbol=symbol,
                 quantity=quantity,
                 price=current_price,
@@ -97,14 +119,55 @@ class OrderExecutor:
             time.sleep(2)
 
             # Get order status
-            order_status = alpaca_client.get_order(order['id'])
+            order_status = alpaca_client.get_order(str(order['id']))
 
             filled_price = order_status.get('filled_avg_price') or current_price
             filled_qty = order_status.get('filled_qty', quantity)
 
-            # Calculate stop loss and take profit
-            stop_loss = filled_price * (1 - settings.default_stop_loss_pct / 100)
-            take_profit = filled_price * (1 + (settings.default_stop_loss_pct * 2) / 100)
+            # Calculate stop loss for tracking (trailing stop will handle exit)
+            stop_loss = filled_price * (1 - settings.trailing_stop_pct / 100)
+
+            # Place exit protection order
+            # Note: Alpaca doesn't support trailing stops for fractional shares
+            trailing_stop_order = None
+            is_fractional = filled_qty != int(filled_qty)
+
+            if settings.use_trailing_stops and not is_fractional:
+                # Use trailing stop for whole shares
+                try:
+                    trailing_stop_order = alpaca_client.place_trailing_stop_order(
+                        symbol=symbol,
+                        qty=filled_qty,
+                        trail_percent=settings.trailing_stop_pct,
+                        side="sell"
+                    )
+                    logger.info(
+                        "trailing_stop_placed",
+                        symbol=symbol,
+                        qty=filled_qty,
+                        trail_percent=settings.trailing_stop_pct,
+                        order_id=trailing_stop_order['id']
+                    )
+                except Exception as e:
+                    logger.error("failed_to_place_trailing_stop", symbol=symbol, error=str(e))
+
+            # Fall back to regular stop order for fractional shares or if trailing stop failed
+            if not trailing_stop_order:
+                try:
+                    trailing_stop_order = alpaca_client.place_stop_order(
+                        symbol=symbol,
+                        qty=filled_qty,
+                        stop_price=round(stop_loss, 2),
+                        side="sell"
+                    )
+                    logger.info(
+                        "stop_order_placed",
+                        symbol=symbol,
+                        stop_price=round(stop_loss, 2),
+                        reason="fractional_shares" if is_fractional else "trailing_stop_failed"
+                    )
+                except Exception as e2:
+                    logger.error("failed_to_place_stop_order", error=str(e2))
 
             # Create position record
             position = Position(
@@ -113,12 +176,13 @@ class OrderExecutor:
                 quantity=filled_qty,
                 entry_price=filled_price,
                 entry_date=datetime.utcnow(),
-                strategy=signal.strategy_name,
+                strategy=signal.strategy,
                 confidence_score=confidence,
                 stop_loss=stop_loss,
-                take_profit=take_profit,
+                take_profit=None,  # No fixed take-profit with trailing stops
                 status=PositionStatus.OPEN,
-                alpaca_order_id=order['id']
+                alpaca_order_id=str(order['id']),
+                alpaca_stop_order_id=str(trailing_stop_order['id']) if trailing_stop_order else None
             )
 
             db.add(position)
@@ -132,7 +196,7 @@ class OrderExecutor:
                 quantity=filled_qty,
                 price=filled_price,
                 filled_at=datetime.utcnow(),
-                alpaca_order_id=order['id']
+                alpaca_order_id=str(order['id'])
             )
 
             db.add(trade)
@@ -153,7 +217,7 @@ class OrderExecutor:
                 quantity=filled_qty,
                 entry_price=filled_price,
                 stop_loss=stop_loss,
-                take_profit=take_profit
+                trailing_stop=True if trailing_stop_order else False
             )
 
             return position
@@ -186,6 +250,28 @@ class OrderExecutor:
         """
         try:
             symbol = position.symbol
+
+            # Cancel any existing orders for this symbol first (e.g., stop orders)
+            open_orders = alpaca_client.get_open_orders()
+            for existing_order in open_orders:
+                if existing_order['symbol'] == symbol:
+                    try:
+                        alpaca_client.cancel_order(existing_order['id'])
+                        logger.info(
+                            "cancelled_existing_order_for_close",
+                            symbol=symbol,
+                            order_id=existing_order['id'],
+                            order_type=existing_order['type']
+                        )
+                        import time
+                        time.sleep(0.5)  # Brief pause after cancel
+                    except Exception as e:
+                        logger.warning(
+                            "failed_to_cancel_order",
+                            symbol=symbol,
+                            order_id=existing_order['id'],
+                            error=str(e)
+                        )
 
             # Get current price
             bars = alpaca_client.get_bars(symbol, timeframe="1Min", limit=1)
@@ -230,7 +316,7 @@ class OrderExecutor:
                 quantity=filled_qty,
                 price=filled_price,
                 filled_at=datetime.utcnow(),
-                alpaca_order_id=order['id'],
+                alpaca_order_id=str(order['id']),
                 notes=reason
             )
 
@@ -305,6 +391,296 @@ class OrderExecutor:
 
         except Exception as e:
             logger.error("failed_to_sync_positions", error=str(e))
+
+    def add_trailing_stop_to_position(
+        self,
+        position: Position,
+        db: Session,
+        trail_percent: float = None
+    ) -> bool:
+        """
+        Add a trailing stop order to an existing position on Alpaca.
+
+        This is useful for positions that were opened without a trailing stop,
+        or to refresh DAY orders for fractional shares.
+
+        Args:
+            position: Position to add trailing stop to
+            db: Database session
+            trail_percent: Optional custom trail percentage (uses settings.trailing_stop_pct if not provided)
+
+        Returns:
+            True if successful
+        """
+        try:
+            symbol = position.symbol
+
+            # Check if there's already an active stop order
+            existing_orders = alpaca_client.get_open_orders(symbol)
+            stop_orders = [o for o in existing_orders if o['type'] in ['stop', 'trailing_stop']]
+
+            if stop_orders:
+                logger.info(
+                    "stop_order_already_exists",
+                    symbol=symbol,
+                    order_id=stop_orders[0]['id'],
+                    order_type=stop_orders[0]['type']
+                )
+                return True
+
+            # Use settings trail percent if not provided
+            if trail_percent is None:
+                trail_percent = settings.trailing_stop_pct
+
+            # Check if fractional shares (Alpaca doesn't support trailing stops for fractional)
+            is_fractional = position.quantity != int(position.quantity)
+
+            # Place trailing stop order (only for whole shares)
+            if settings.use_trailing_stops and not is_fractional:
+                order = alpaca_client.place_trailing_stop_order(
+                    symbol=symbol,
+                    qty=position.quantity,
+                    trail_percent=trail_percent,
+                    side="sell"
+                )
+                order_type = "trailing_stop"
+            else:
+                # Use regular stop for fractional shares or if trailing stops disabled
+                stop_price = position.entry_price * (1 - trail_percent / 100)
+                order = alpaca_client.place_stop_order(
+                    symbol=symbol,
+                    qty=position.quantity,
+                    stop_price=round(stop_price, 2),
+                    side="sell"
+                )
+                order_type = "stop"
+                if is_fractional:
+                    logger.info(
+                        "using_stop_order_for_fractional",
+                        symbol=symbol,
+                        reason="alpaca_doesnt_support_trailing_stops_for_fractional_shares"
+                    )
+
+            # Update position with stop order ID
+            position.alpaca_stop_order_id = str(order['id'])
+            db.commit()
+
+            logger.info(
+                "trailing_stop_added_to_position",
+                position_id=position.id,
+                symbol=symbol,
+                trail_percent=trail_percent,
+                order_type=order_type,
+                order_id=order['id']
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error(
+                "failed_to_add_trailing_stop",
+                position_id=position.id,
+                symbol=position.symbol,
+                error=str(e)
+            )
+            return False
+
+    def tighten_trailing_stop(
+        self,
+        position: Position,
+        db: Session,
+        new_trail_percent: float,
+        current_price: float
+    ) -> bool:
+        """
+        Tighten the trailing stop for a position.
+
+        Cancels the existing stop order and places a new one with a tighter trail.
+        Only tightens if the position is profitable.
+
+        Args:
+            position: Position to tighten stop for
+            db: Database session
+            new_trail_percent: New tighter trail percentage
+            current_price: Current market price
+
+        Returns:
+            True if successful
+        """
+        try:
+            symbol = position.symbol
+
+            # Check if position is profitable
+            pnl_pct = ((current_price - position.entry_price) / position.entry_price) * 100
+            if pnl_pct <= 0:
+                logger.info(
+                    "skip_tighten_not_profitable",
+                    symbol=symbol,
+                    pnl_pct=pnl_pct
+                )
+                return False
+
+            # Cancel existing stop order
+            existing_orders = alpaca_client.get_open_orders(symbol)
+            stop_orders = [o for o in existing_orders if o['type'] in ['stop', 'trailing_stop']]
+
+            for stop_order in stop_orders:
+                try:
+                    alpaca_client.cancel_order(stop_order['id'])
+                    logger.info(
+                        "cancelled_stop_for_tightening",
+                        symbol=symbol,
+                        order_id=stop_order['id'],
+                        old_type=stop_order['type']
+                    )
+                    import time
+                    time.sleep(0.5)  # Brief pause after cancel
+                except Exception as e:
+                    logger.warning(
+                        "failed_to_cancel_stop_for_tightening",
+                        symbol=symbol,
+                        error=str(e)
+                    )
+
+            # Place new tighter stop
+            is_fractional = position.quantity != int(position.quantity)
+
+            if settings.use_trailing_stops and not is_fractional:
+                order = alpaca_client.place_trailing_stop_order(
+                    symbol=symbol,
+                    qty=position.quantity,
+                    trail_percent=new_trail_percent,
+                    side="sell"
+                )
+                order_type = "trailing_stop"
+            else:
+                # Use regular stop for fractional shares
+                # Calculate stop price based on current price (not entry)
+                stop_price = current_price * (1 - new_trail_percent / 100)
+                order = alpaca_client.place_stop_order(
+                    symbol=symbol,
+                    qty=position.quantity,
+                    stop_price=round(stop_price, 2),
+                    side="sell"
+                )
+                order_type = "stop"
+
+            # Update position
+            position.alpaca_stop_order_id = str(order['id'])
+            position.stop_loss = current_price * (1 - new_trail_percent / 100)
+            db.commit()
+
+            logger.info(
+                "trailing_stop_tightened",
+                symbol=symbol,
+                position_id=position.id,
+                old_trail_pct=settings.trailing_stop_pct,
+                new_trail_pct=new_trail_percent,
+                current_price=current_price,
+                pnl_pct=pnl_pct,
+                order_type=order_type
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error(
+                "failed_to_tighten_trailing_stop",
+                symbol=position.symbol,
+                error=str(e)
+            )
+            return False
+
+    def refresh_trailing_stops_for_fractional_shares(self, db: Session) -> int:
+        """
+        Refresh trailing stop orders for positions with fractional shares.
+
+        Fractional share orders must be DAY orders, so they need to be
+        re-placed each day at market open.
+
+        Args:
+            db: Database session
+
+        Returns:
+            Number of trailing stops refreshed
+        """
+        count = 0
+        try:
+            # Get all open positions
+            positions = db.query(Position).filter(
+                Position.status == PositionStatus.OPEN
+            ).all()
+
+            for position in positions:
+                # Check if fractional shares
+                is_fractional = position.quantity != int(position.quantity)
+                if not is_fractional:
+                    continue
+
+                # Cancel existing stop order if any
+                if position.alpaca_stop_order_id:
+                    try:
+                        alpaca_client.cancel_order(position.alpaca_stop_order_id)
+                        logger.info(
+                            "cancelled_expired_stop_order",
+                            symbol=position.symbol,
+                            order_id=position.alpaca_stop_order_id
+                        )
+                    except Exception:
+                        pass  # Order may have already expired or filled
+                    position.alpaca_stop_order_id = None
+
+                # Place new trailing stop
+                if self.add_trailing_stop_to_position(position, db):
+                    count += 1
+
+            logger.info(
+                "fractional_trailing_stops_refreshed",
+                positions_checked=len(positions),
+                stops_refreshed=count
+            )
+            return count
+
+        except Exception as e:
+            logger.error("failed_to_refresh_trailing_stops", error=str(e))
+            return count
+
+    def ensure_all_positions_have_trailing_stops(self, db: Session) -> int:
+        """
+        Ensure all open positions have trailing stop orders on Alpaca.
+
+        Returns:
+            Number of trailing stop orders placed
+        """
+        count = 0
+        try:
+            # Get all open positions
+            positions = db.query(Position).filter(
+                Position.status == PositionStatus.OPEN
+            ).all()
+
+            for position in positions:
+                # Check if position already has a stop order on Alpaca
+                existing_orders = alpaca_client.get_open_orders(position.symbol)
+                stop_orders = [o for o in existing_orders if o['type'] in ['stop', 'trailing_stop']]
+
+                if stop_orders:
+                    # Update position with order ID if not set
+                    if not position.alpaca_stop_order_id:
+                        position.alpaca_stop_order_id = str(stop_orders[0]['id'])
+                        db.commit()
+                    continue
+
+                # Try to add trailing stop
+                if self.add_trailing_stop_to_position(position, db):
+                    count += 1
+
+            logger.info("trailing_stops_ensured", positions_checked=len(positions), stops_added=count)
+            return count
+
+        except Exception as e:
+            logger.error("failed_to_ensure_trailing_stops", error=str(e))
+            return count
 
 
 # Global order executor instance

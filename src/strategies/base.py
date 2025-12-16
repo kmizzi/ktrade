@@ -72,12 +72,17 @@ class BaseStrategy(ABC):
         self.logger = structlog.get_logger(f"strategy.{name}")
 
     @abstractmethod
-    def generate_signals(self, symbols: List[str]) -> List[Signal]:
+    def generate_signals(
+        self,
+        symbols: List[str],
+        owned_symbols: Optional[List[str]] = None
+    ) -> List[Signal]:
         """
         Generate trading signals for given symbols.
 
         Args:
             symbols: List of symbols to analyze
+            owned_symbols: List of symbols currently owned (for SELL signal filtering)
 
         Returns:
             List of Signal objects

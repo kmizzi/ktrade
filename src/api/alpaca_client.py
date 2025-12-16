@@ -7,16 +7,52 @@ from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
 import time
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest, GetOrdersRequest
-from alpaca.trading.enums import OrderSide, TimeInForce, QueryOrderStatus
+from alpaca.trading.requests import (
+    MarketOrderRequest,
+    LimitOrderRequest,
+    StopOrderRequest,
+    StopLimitOrderRequest,
+    TrailingStopOrderRequest,
+    GetOrdersRequest,
+    TakeProfitRequest,
+    StopLossRequest,
+)
+from alpaca.trading.enums import OrderSide, TimeInForce, QueryOrderStatus, OrderClass
 from alpaca.data.historical import StockHistoricalDataClient, CryptoHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest, CryptoBarsRequest, StockLatestQuoteRequest
 from alpaca.data.timeframe import TimeFrame
+from alpaca.common.exceptions import APIError
 import structlog
+from functools import wraps
 
 from config.settings import settings
 
 logger = structlog.get_logger(__name__)
+
+
+class RateLimitException(Exception):
+    """Raised when Alpaca API rate limit is hit"""
+    def __init__(self, retry_after: int = 60):
+        self.retry_after = retry_after
+        super().__init__(f"Rate limit exceeded. Retry after {retry_after} seconds.")
+
+
+def handle_rate_limit(func):
+    """Decorator to detect rate limit errors and raise RateLimitException"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except APIError as e:
+            # Check for rate limit (HTTP 429)
+            error_str = str(e).lower()
+            if '429' in str(e) or 'rate limit' in error_str or 'too many requests' in error_str:
+                # Try to extract retry-after from error, default to 60 seconds
+                retry_after = 60
+                logger.warning("rate_limit_hit", function=func.__name__, retry_after=retry_after)
+                raise RateLimitException(retry_after=retry_after)
+            raise
+    return wrapper
 
 
 class AlpacaClient:
@@ -49,6 +85,7 @@ class AlpacaClient:
             base_url=settings.alpaca_base_url
         )
 
+    @handle_rate_limit
     def get_account(self) -> Dict[str, Any]:
         """
         Get account information.
@@ -73,6 +110,7 @@ class AlpacaClient:
             logger.error("failed_to_get_account", error=str(e))
             raise
 
+    @handle_rate_limit
     def get_positions(self) -> List[Dict[str, Any]]:
         """
         Get all open positions.
@@ -100,6 +138,7 @@ class AlpacaClient:
             logger.error("failed_to_get_positions", error=str(e))
             raise
 
+    @handle_rate_limit
     def place_market_order(
         self,
         symbol: str,
@@ -163,6 +202,300 @@ class AlpacaClient:
             )
             raise
 
+    def place_bracket_order(
+        self,
+        symbol: str,
+        qty: float,
+        side: str,
+        stop_loss_price: float,
+        take_profit_price: float,
+        time_in_force: str = "gtc"
+    ) -> Dict[str, Any]:
+        """
+        Place a bracket order (entry + stop loss + take profit).
+
+        A bracket order is a chain of three orders:
+        1. Entry order (market)
+        2. Stop loss order (triggered if price falls)
+        3. Take profit order (triggered if price rises)
+
+        Only one of stop loss or take profit will execute (OCO).
+
+        Args:
+            symbol: Stock or crypto symbol
+            qty: Quantity to buy/sell
+            side: 'buy' or 'sell'
+            stop_loss_price: Price to trigger stop loss
+            take_profit_price: Price to trigger take profit
+            time_in_force: Order time in force (default: 'gtc' for bracket)
+
+        Returns:
+            Order details including leg order IDs
+        """
+        try:
+            order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+
+            # Fractional orders must be DAY orders (Alpaca requirement)
+            is_fractional = qty != int(qty)
+            if time_in_force == "auto" or time_in_force == "gtc":
+                tif = TimeInForce.DAY if is_fractional else TimeInForce.GTC
+            else:
+                tif = TimeInForce.DAY
+
+            request = MarketOrderRequest(
+                symbol=symbol,
+                qty=qty,
+                side=order_side,
+                time_in_force=tif,
+                order_class=OrderClass.BRACKET,
+                take_profit=TakeProfitRequest(limit_price=take_profit_price),
+                stop_loss=StopLossRequest(stop_price=stop_loss_price)
+            )
+
+            order = self.trading_client.submit_order(request)
+
+            logger.info(
+                "bracket_order_placed",
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                stop_loss=stop_loss_price,
+                take_profit=take_profit_price,
+                order_id=order.id
+            )
+
+            return {
+                "id": order.id,
+                "client_order_id": order.client_order_id,
+                "symbol": order.symbol,
+                "qty": float(order.qty) if order.qty else 0,
+                "side": order.side.value,
+                "type": order.type.value,
+                "order_class": order.order_class.value if order.order_class else None,
+                "status": order.status.value,
+                "filled_qty": float(order.filled_qty) if order.filled_qty else 0,
+                "filled_avg_price": float(order.filled_avg_price) if order.filled_avg_price else None,
+                "stop_loss_price": stop_loss_price,
+                "take_profit_price": take_profit_price,
+                "legs": [{"id": leg.id, "type": leg.type.value} for leg in order.legs] if order.legs else [],
+                "submitted_at": order.submitted_at,
+            }
+
+        except Exception as e:
+            logger.error(
+                "failed_to_place_bracket_order",
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                stop_loss=stop_loss_price,
+                take_profit=take_profit_price,
+                error=str(e)
+            )
+            raise
+
+    @handle_rate_limit
+    def place_stop_order(
+        self,
+        symbol: str,
+        qty: float,
+        stop_price: float,
+        side: str = "sell",
+        time_in_force: str = "auto"
+    ) -> Dict[str, Any]:
+        """
+        Place a stop order (for stop-loss on existing positions).
+
+        This creates a sell stop order that triggers when price falls to stop_price.
+
+        Args:
+            symbol: Stock or crypto symbol
+            qty: Quantity to sell
+            stop_price: Price at which to trigger the stop
+            side: 'sell' for stop-loss (default)
+            time_in_force: Order time in force (default: 'auto' - DAY for fractional, GTC for whole)
+
+        Returns:
+            Order details
+        """
+        try:
+            order_side = OrderSide.SELL if side.lower() == "sell" else OrderSide.BUY
+
+            # Fractional orders must be DAY orders (Alpaca requirement)
+            is_fractional = qty != int(qty)
+            if time_in_force == "auto":
+                tif = TimeInForce.DAY if is_fractional else TimeInForce.GTC
+            else:
+                tif = TimeInForce.GTC if time_in_force.lower() == "gtc" else TimeInForce.DAY
+
+            request = StopOrderRequest(
+                symbol=symbol,
+                qty=qty,
+                side=order_side,
+                stop_price=stop_price,
+                time_in_force=tif
+            )
+
+            order = self.trading_client.submit_order(request)
+
+            logger.info(
+                "stop_order_placed",
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                stop_price=stop_price,
+                order_id=order.id
+            )
+
+            return {
+                "id": order.id,
+                "client_order_id": order.client_order_id,
+                "symbol": order.symbol,
+                "qty": float(order.qty) if order.qty else 0,
+                "side": order.side.value,
+                "type": order.type.value,
+                "status": order.status.value,
+                "stop_price": stop_price,
+                "submitted_at": order.submitted_at,
+            }
+
+        except Exception as e:
+            logger.error(
+                "failed_to_place_stop_order",
+                symbol=symbol,
+                stop_price=stop_price,
+                error=str(e)
+            )
+            raise
+
+    @handle_rate_limit
+    def place_trailing_stop_order(
+        self,
+        symbol: str,
+        qty: float,
+        trail_percent: float,
+        side: str = "sell",
+        time_in_force: str = "auto"
+    ) -> Dict[str, Any]:
+        """
+        Place a trailing stop order.
+
+        The stop price follows the market price by the trail_percent.
+        If the stock rises, the stop price rises. If it falls, the stop triggers.
+
+        Args:
+            symbol: Stock or crypto symbol
+            qty: Quantity to sell
+            trail_percent: Percentage to trail (e.g., 5.0 for 5%)
+            side: 'sell' for stop-loss (default)
+            time_in_force: Order time in force (default: 'auto' - DAY for fractional, GTC for whole)
+
+        Returns:
+            Order details
+        """
+        try:
+            order_side = OrderSide.SELL if side.lower() == "sell" else OrderSide.BUY
+
+            # Fractional orders must be DAY orders (Alpaca requirement)
+            is_fractional = qty != int(qty)
+            if time_in_force == "auto":
+                tif = TimeInForce.DAY if is_fractional else TimeInForce.GTC
+            else:
+                tif = TimeInForce.GTC if time_in_force.lower() == "gtc" else TimeInForce.DAY
+
+            request = TrailingStopOrderRequest(
+                symbol=symbol,
+                qty=qty,
+                side=order_side,
+                trail_percent=trail_percent,
+                time_in_force=tif
+            )
+
+            order = self.trading_client.submit_order(request)
+
+            logger.info(
+                "trailing_stop_order_placed",
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                trail_percent=trail_percent,
+                order_id=order.id
+            )
+
+            return {
+                "id": order.id,
+                "client_order_id": order.client_order_id,
+                "symbol": order.symbol,
+                "qty": float(order.qty) if order.qty else 0,
+                "side": order.side.value,
+                "type": order.type.value,
+                "status": order.status.value,
+                "trail_percent": trail_percent,
+                "submitted_at": order.submitted_at,
+            }
+
+        except Exception as e:
+            logger.error(
+                "failed_to_place_trailing_stop_order",
+                symbol=symbol,
+                trail_percent=trail_percent,
+                error=str(e)
+            )
+            raise
+
+    def cancel_order(self, order_id: str) -> bool:
+        """
+        Cancel an order by ID.
+
+        Args:
+            order_id: Alpaca order ID
+
+        Returns:
+            True if cancelled successfully
+        """
+        try:
+            self.trading_client.cancel_order_by_id(order_id)
+            logger.info("order_cancelled", order_id=order_id)
+            return True
+        except Exception as e:
+            logger.error("failed_to_cancel_order", order_id=order_id, error=str(e))
+            return False
+
+    @handle_rate_limit
+    def get_open_orders(self, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get all open orders, optionally filtered by symbol.
+
+        Args:
+            symbol: Optional symbol to filter by
+
+        Returns:
+            List of open orders
+        """
+        try:
+            request = GetOrdersRequest(
+                status=QueryOrderStatus.OPEN,
+                symbols=[symbol] if symbol else None
+            )
+            orders = self.trading_client.get_orders(request)
+
+            return [
+                {
+                    "id": order.id,
+                    "symbol": order.symbol,
+                    "qty": float(order.qty) if order.qty else 0,
+                    "side": order.side.value,
+                    "type": order.type.value,
+                    "status": order.status.value,
+                    "stop_price": float(order.stop_price) if order.stop_price else None,
+                    "limit_price": float(order.limit_price) if order.limit_price else None,
+                    "submitted_at": order.submitted_at,
+                }
+                for order in orders
+            ]
+        except Exception as e:
+            logger.error("failed_to_get_open_orders", symbol=symbol, error=str(e))
+            return []
+
     def get_order(self, order_id: str) -> Dict[str, Any]:
         """
         Get order by ID.
@@ -216,6 +549,7 @@ class AlpacaClient:
             logger.error("failed_to_close_position", symbol=symbol, error=str(e))
             raise
 
+    @handle_rate_limit
     def get_bars(
         self,
         symbol: str,
@@ -241,9 +575,9 @@ class AlpacaClient:
             # Determine if stock or crypto
             is_crypto = "/" in symbol
 
-            # Set default date range
+            # Set default date range (need ~60+ trading days for indicators)
             if not start:
-                start = datetime.now() - timedelta(days=30)
+                start = datetime.now() - timedelta(days=120)
             if not end:
                 end = datetime.now()
 
@@ -335,6 +669,40 @@ class AlpacaClient:
         except Exception as e:
             logger.error("failed_to_get_latest_quote", symbol=symbol, error=str(e))
             return None
+
+    def is_market_open(self) -> bool:
+        """
+        Check if the market is currently open.
+
+        Returns:
+            True if market is open, False otherwise
+        """
+        try:
+            clock = self.trading_client.get_clock()
+            return clock.is_open
+        except Exception as e:
+            logger.error("failed_to_get_market_clock", error=str(e))
+            # Default to False if we can't check
+            return False
+
+    def get_clock(self) -> Dict[str, Any]:
+        """
+        Get market clock information.
+
+        Returns:
+            Dict with market clock details
+        """
+        try:
+            clock = self.trading_client.get_clock()
+            return {
+                "is_open": clock.is_open,
+                "next_open": clock.next_open,
+                "next_close": clock.next_close,
+                "timestamp": clock.timestamp,
+            }
+        except Exception as e:
+            logger.error("failed_to_get_clock", error=str(e))
+            return {"is_open": False}
 
 
 # Global client instance

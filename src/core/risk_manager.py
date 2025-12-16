@@ -31,6 +31,7 @@ class RiskManager:
         self.max_portfolio_exposure_pct = settings.max_portfolio_exposure_pct
         self.daily_loss_limit_pct = settings.daily_loss_limit_pct
         self.default_stop_loss_pct = settings.default_stop_loss_pct
+        self.take_profit_pct = settings.take_profit_pct
 
         # Track daily performance
         self._daily_start_value = None
@@ -131,8 +132,11 @@ class RiskManager:
             # Calculate quantity
             quantity = target_value / price
 
-            # Round to 2 decimal places for fractional shares
-            quantity = round(quantity, 2)
+            # Round down to whole shares if preferred (enables trailing stops on Alpaca)
+            if settings.prefer_whole_shares:
+                quantity = int(quantity)  # Floor to whole shares
+            else:
+                quantity = round(quantity, 2)  # Allow fractional shares
 
             logger.debug(
                 "position_size_calculated",
@@ -255,9 +259,15 @@ class RiskManager:
         if not position.stop_loss and pnl_pct <= -self.default_stop_loss_pct:
             return True, f"Default stop loss triggered ({pnl_pct:.2f}%)"
 
-        # Check take profit
+        # Check take profit (if explicitly set on position)
         if position.take_profit and current_price >= position.take_profit:
             return True, f"Take profit hit (${current_price:.2f} >= ${position.take_profit:.2f})"
+
+        # Check take profit for fractional positions (can't use OCO orders on Alpaca)
+        # Whole share positions use trailing stops on Alpaca, so skip them here
+        is_fractional = position.quantity != int(position.quantity)
+        if is_fractional and pnl_pct >= self.take_profit_pct:
+            return True, f"Fractional position take profit ({pnl_pct:.1f}% >= {self.take_profit_pct}%)"
 
         return False, None
 

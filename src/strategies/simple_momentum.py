@@ -38,17 +38,23 @@ class SimpleMomentumStrategy(BaseStrategy):
         self.min_confidence = 0.6
         self.stop_loss_pct = settings.default_stop_loss_pct
 
-    def generate_signals(self, symbols: List[str]) -> List[Signal]:
+    def generate_signals(
+        self,
+        symbols: List[str],
+        owned_symbols: Optional[List[str]] = None
+    ) -> List[Signal]:
         """
         Generate buy/sell signals for given symbols.
 
         Args:
             symbols: List of symbols to analyze
+            owned_symbols: List of symbols currently owned (SELL signals only for these)
 
         Returns:
             List of Signal objects
         """
         signals = []
+        owned_set = set(owned_symbols or [])
 
         for symbol in symbols:
             try:
@@ -83,7 +89,8 @@ class SimpleMomentumStrategy(BaseStrategy):
 
                 # Generate signal
                 signal = self._evaluate_symbol(
-                    symbol, current_price, rsi, sma_20, indicators
+                    symbol, current_price, rsi, sma_20, indicators,
+                    is_owned=(symbol in owned_set)
                 )
 
                 if signal and signal.signal_type != 'hold':
@@ -105,7 +112,8 @@ class SimpleMomentumStrategy(BaseStrategy):
         current_price: float,
         rsi: float,
         sma_20: float,
-        indicators: Dict[str, Any]
+        indicators: Dict[str, Any],
+        is_owned: bool = False
     ) -> Optional[Signal]:
         """
         Evaluate a symbol and generate signal if conditions met.
@@ -116,59 +124,71 @@ class SimpleMomentumStrategy(BaseStrategy):
             rsi: RSI value
             sma_20: 20-day SMA value
             indicators: All calculated indicators
+            is_owned: Whether we currently own this symbol
 
         Returns:
             Signal object or None
         """
-        # Buy conditions
-        price_above_sma = current_price > sma_20
-        rsi_in_range = self.rsi_buy_min <= rsi <= self.rsi_buy_max
+        # Buy conditions (only for symbols we don't own)
+        if not is_owned:
+            price_above_sma = current_price > sma_20
+            rsi_in_range = self.rsi_buy_min <= rsi <= self.rsi_buy_max
 
-        if price_above_sma and rsi_in_range:
-            # Calculate confidence based on how strong the signals are
-            price_distance_pct = ((current_price - sma_20) / sma_20) * 100
-            rsi_strength = self._calculate_rsi_strength(rsi)
+            if price_above_sma and rsi_in_range:
+                # Calculate confidence based on how strong the signals are
+                price_distance_pct = ((current_price - sma_20) / sma_20) * 100
+                rsi_strength = self._calculate_rsi_strength(rsi)
 
-            confidence = self._calculate_buy_confidence(
-                price_distance_pct, rsi_strength
-            )
+                confidence = self._calculate_buy_confidence(
+                    price_distance_pct, rsi_strength
+                )
 
-            if confidence >= self.min_confidence:
+                if confidence >= self.min_confidence:
+                    return Signal(
+                        symbol=symbol,
+                        signal_type='buy',
+                        confidence=confidence,
+                        strategy_name=self.name,
+                        data_snapshot={
+                            'price': current_price,
+                            'rsi': rsi,
+                            'sma_20': sma_20,
+                            'price_distance_pct': price_distance_pct,
+                            'indicators': indicators
+                        },
+                        notes=f"Price above SMA ({price_distance_pct:.2f}%), RSI in buy range ({rsi:.1f})"
+                    )
+
+        # Sell conditions - ONLY for symbols we own
+        if is_owned:
+            rsi_overbought = rsi > self.rsi_sell_threshold
+            price_below_sma = current_price < sma_20
+
+            if rsi_overbought or price_below_sma:
+                # Calculate sell confidence based on signal strength
+                confidence = 0.85 if rsi_overbought else 0.75
+                if rsi_overbought and price_below_sma:
+                    confidence = 0.95  # Both conditions = very strong sell signal
+
+                reason = []
+                if rsi_overbought:
+                    reason.append(f"RSI overbought ({rsi:.1f})")
+                if price_below_sma:
+                    reason.append(f"Price below SMA (${current_price:.2f} < ${sma_20:.2f})")
+
                 return Signal(
                     symbol=symbol,
-                    signal_type='buy',
+                    signal_type='sell',
                     confidence=confidence,
                     strategy_name=self.name,
                     data_snapshot={
                         'price': current_price,
                         'rsi': rsi,
                         'sma_20': sma_20,
-                        'price_distance_pct': price_distance_pct,
                         'indicators': indicators
                     },
-                    notes=f"Price above SMA ({price_distance_pct:.2f}%), RSI in buy range ({rsi:.1f})"
+                    notes=", ".join(reason)
                 )
-
-        # Sell conditions (for existing positions - will be used in should_exit_position)
-        # Here we just identify potential sell signals for monitoring
-        rsi_overbought = rsi > self.rsi_sell_threshold
-        price_below_sma = current_price < sma_20
-
-        if rsi_overbought or price_below_sma:
-            reason = "RSI overbought" if rsi_overbought else "Price below SMA"
-            return Signal(
-                symbol=symbol,
-                signal_type='sell',
-                confidence=0.8,
-                strategy_name=self.name,
-                data_snapshot={
-                    'price': current_price,
-                    'rsi': rsi,
-                    'sma_20': sma_20,
-                    'indicators': indicators
-                },
-                notes=reason
-            )
 
         return None
 

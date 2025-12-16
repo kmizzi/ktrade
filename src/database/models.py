@@ -67,6 +67,8 @@ class Position(Base):
     # Alpaca integration
     alpaca_order_id = Column(String(100), nullable=True)
     alpaca_position_id = Column(String(100), nullable=True)
+    alpaca_stop_order_id = Column(String(100), nullable=True)  # Stop-loss order on Alpaca
+    alpaca_tp_order_id = Column(String(100), nullable=True)    # Take-profit order on Alpaca
 
     # Metadata
     notes = Column(Text, nullable=True)
