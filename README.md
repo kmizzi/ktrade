@@ -93,7 +93,7 @@ python scripts/run_bot.py
 The bot will:
 - Connect to Alpaca paper trading API
 - Start monitoring your watchlist
-- Evaluate trading strategies every 15 minutes during market hours
+- Evaluate trading strategies every 5 minutes during market hours
 - Execute trades based on signals
 - Monitor and close positions based on exit conditions
 - Save portfolio snapshots
@@ -123,6 +123,46 @@ Buy at support, sell at resistance within defined ranges
 
 Combines social media sentiment with price momentum
 
+## Order Types
+
+The bot uses advanced order types to protect positions and maximize gains:
+
+### Trailing Stops (Default for Whole Shares)
+
+When opening a new position with **whole shares**, the bot places a **trailing stop order**:
+1. **Entry Order**: Market order to enter the position
+2. **Trailing Stop**: Follows price up, sells if price drops 7% from high
+
+**How it works:**
+- Buy MRK at $100 → Trailing stop starts at $93 (7% below)
+- Price rises to $120 → Stop trails up to $111.60 (7% below $120)
+- Price drops to $111 → Sell at $111 (+11% gain!)
+
+**Benefits over fixed take-profit:**
+- No artificial ceiling on gains (vs old 10% cap)
+- Adapts to strong trends automatically
+- Still protects against losses (initial -7% protection)
+
+**Note:** Alpaca doesn't support trailing stops for fractional shares. For fractional positions, the bot uses regular stop orders at -7% from entry (still better than the old -5%).
+
+### DAY vs GTC Orders
+
+- **DAY orders** for fractional share positions (Alpaca requirement)
+- **GTC orders** for whole share positions (Good-Til-Cancelled)
+
+At market open, the bot automatically:
+1. Refreshes expired DAY orders for fractional shares
+2. Ensures all positions have trailing stop orders
+
+### Configuration
+
+```bash
+# .env settings
+TRAILING_STOP_PCT=7.0        # Trail percentage (default: 7%)
+USE_TRAILING_STOPS=true      # Enable trailing stops (default: true)
+DEFAULT_STOP_LOSS_PCT=5.0    # Hard stop loss fallback
+```
+
 ## Risk Management
 
 The bot includes comprehensive risk controls:
@@ -130,7 +170,8 @@ The bot includes comprehensive risk controls:
 - **Position Size Limit**: Max 10% of portfolio per position
 - **Portfolio Exposure Cap**: Max 80% invested, 20% cash reserve
 - **Daily Loss Limit**: Trading halts at -3% daily loss
-- **Stop Losses**: Automatic -5% stop on all positions
+- **Trailing Stops**: 7% trailing stop on all positions (executes on Alpaca, captures more gains)
+- **No Artificial Ceiling**: Removed fixed 10% take-profit to allow bigger winners
 - **Paper Trading**: No real money at risk
 
 ## Monitoring
@@ -210,7 +251,7 @@ WATCHLIST_CRYPTO=BTC/USD,ETH/USD
 The bot runs on a schedule:
 
 - **Market Open (9:30 AM ET)**: Generate fresh watchlist, reset daily tracking, sync positions
-- **Every 15 minutes (9:30 AM - 4:00 PM ET)**: Evaluate strategies on dynamic watchlist, execute signals, monitor positions
+- **Every 5 minutes (9:30 AM - 4:00 PM ET)**: Evaluate strategies on dynamic watchlist, execute signals, monitor positions
 - **Every hour**: Sync portfolio with Alpaca
 - **Market Close (4:00 PM ET)**: Save portfolio snapshot, log performance
 
@@ -222,7 +263,7 @@ At market open, the bot:
 3. Finds volume spikes (e.g., AVGO 3.58x normal volume)
 4. Detects technical breakouts (50-day highs)
 5. Combines best opportunities into dynamic watchlist (up to 20 stocks)
-6. Evaluates these stocks every 15 minutes during trading hours
+6. Evaluates these stocks every 5 minutes during trading hours
 
 ## Development Status
 
@@ -237,6 +278,8 @@ At market open, the bot:
 - [x] Portfolio tracking
 - [x] Main bot runner with scheduling
 - [x] **Autonomous stock discovery** (Phase 1.2)
+- [x] **Trailing stop orders** - Follows price up, captures bigger gains
+- [x] **Auto-refresh for fractional shares** - DAY orders re-placed at market open
 
 ### 🚧 Phase 1.2: Additional Strategies (Next)
 - [ ] DCA strategy implementation

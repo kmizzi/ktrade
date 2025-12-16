@@ -1,8 +1,8 @@
 # Product Requirements Document: Automated Multi-Platform Trading Bot
 
-**Version:** 1.1
-**Date:** December 13, 2025
-**Status:** Implementation In Progress
+**Version:** 1.3
+**Date:** December 15, 2025
+**Status:** Phase 1 Complete - Live Paper Trading with Trailing Stops
 
 > **⚠️ PLATFORM UPDATE**: This project now uses **Alpaca API** instead of Robinhood/Coinbase.
 > Alpaca provides a unified API for both stocks and crypto, superior paper trading support,
@@ -17,7 +17,10 @@ This document outlines the requirements for developing an intelligent, automated
 
 The bot will leverage multiple data sources including market data, news sentiment, social media analysis (Reddit, X.com), and technical indicators to make informed trading decisions with the goal of automated portfolio growth through effective, data-driven strategies.
 
-**Current Status**: Phase 1.2 In Progress - Dynamic stock discovery implemented. Bot autonomously finds hot stocks based on technical criteria.
+**Current Status**: Phase 1 Complete - Bot is live in paper trading mode with:
+- Autonomous stock discovery (finds hot stocks automatically)
+- Bracket orders with automatic stop-loss and take-profit
+- 3 active positions (MRK, JNJ, PFE)
 
 ---
 
@@ -322,8 +325,35 @@ The bot will implement multiple strategies that can be enabled/disabled:
 #### Trade Execution Logic
 - Prioritize opportunities by expected risk-adjusted return
 - Respect rate limits and API constraints
-- Use appropriate order types (market vs. limit)
+- Use appropriate order types (market vs. limit vs. bracket)
 - Implement retry logic for failed orders
+
+#### Order Types ✅ IMPLEMENTED
+
+**Trailing Stop Orders** (Default for whole share positions):
+- Entry: Market order to open position
+- Exit: Trailing stop that follows price up by trail_percent (default: 7%)
+- No artificial take-profit ceiling - captures bigger winners
+- Example: Buy at $100 → Stop at $93 → Price rises to $120 → Stop trails to $111.60 → Price drops → Sell at $111 (+11% gain)
+
+**Note:** Alpaca doesn't support trailing stops for fractional shares. For fractional positions, the bot uses regular stop orders at the same trail percentage (-7% from entry).
+
+**Why Trailing Stops Over Bracket Orders:**
+- Fixed take-profit (e.g., +10%) caps all gains at 10%
+- Trailing stops let winners run while protecting gains
+- Adapts to momentum - strong trends = more profit captured
+
+**DAY vs GTC Orders:**
+- DAY orders for fractional share positions (Alpaca requirement)
+- GTC orders for whole share positions
+- Bot auto-refreshes DAY orders at market open
+
+**Configuration:**
+```bash
+TRAILING_STOP_PCT=7.0        # Trail percentage (default: 7%)
+USE_TRAILING_STOPS=true      # Enable trailing stops (default: true)
+DEFAULT_STOP_LOSS_PCT=5.0    # Hard stop fallback
+```
 
 ### 5.5 Risk Management
 
@@ -916,6 +946,9 @@ The phased development approach allows for iterative improvement and validation 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-13 | Initial | Initial PRD creation based on market research |
+| 1.1 | 2025-12-14 | Update | Added autonomous stock discovery (Phase 1.2) |
+| 1.2 | 2025-12-15 | Update | Added bracket orders, automatic stop-loss/take-profit |
+| 1.3 | 2025-12-15 | Update | Replaced fixed take-profit with trailing stops for bigger gains |
 
 ---
 
