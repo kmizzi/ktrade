@@ -222,6 +222,34 @@ def execute_signals():
 
             for signal in deduplicated_signals:
                 try:
+                    # Pre-buy check: Would this position immediately trigger an exit?
+                    # This prevents churning (buy then immediate sell)
+                    strategy = next(
+                        (s for s in strategies if s.name == signal.strategy),
+                        None
+                    )
+
+                    if strategy:
+                        # Get current price from signal data
+                        current_price = signal.data_snapshot.get('price', 0) if signal.data_snapshot else 0
+
+                        if current_price > 0:
+                            would_exit, exit_reason = strategy.should_exit_position(
+                                signal.symbol,
+                                entry_price=current_price,  # Simulating entry at current price
+                                current_price=current_price
+                            )
+
+                            if would_exit:
+                                logger.info(
+                                    "signal_skipped_would_trigger_exit",
+                                    symbol=signal.symbol,
+                                    reason=exit_reason
+                                )
+                                signal.executed = True
+                                db.commit()
+                                continue
+
                     logger.info(
                         "executing_signal",
                         symbol=signal.symbol,

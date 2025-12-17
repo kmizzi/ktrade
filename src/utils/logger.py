@@ -50,6 +50,7 @@ HUMAN_LOG_EVENTS = {
     'signal_generated',
     'executing_signal',
     'signal_executed_successfully',
+    'signal_skipped_would_trigger_exit',
 
     # Portfolio
     'portfolio_state',
