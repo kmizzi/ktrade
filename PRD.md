@@ -1,8 +1,8 @@
 # Product Requirements Document: Automated Multi-Platform Trading Bot
 
-**Version:** 1.3
-**Date:** December 15, 2025
-**Status:** Phase 1 Complete - Live Paper Trading with Trailing Stops
+**Version:** 1.4
+**Date:** December 17, 2025
+**Status:** Phase 2 In Progress - Reddit/WSB Sentiment Analysis
 
 > **⚠️ PLATFORM UPDATE**: This project now uses **Alpaca API** instead of Robinhood/Coinbase.
 > Alpaca provides a unified API for both stocks and crypto, superior paper trading support,
@@ -17,10 +17,13 @@ This document outlines the requirements for developing an intelligent, automated
 
 The bot will leverage multiple data sources including market data, news sentiment, social media analysis (Reddit, X.com), and technical indicators to make informed trading decisions with the goal of automated portfolio growth through effective, data-driven strategies.
 
-**Current Status**: Phase 1 Complete - Bot is live in paper trading mode with:
-- Autonomous stock discovery (finds hot stocks automatically)
-- Bracket orders with automatic stop-loss and take-profit
-- 3 active positions (MRK, JNJ, PFE)
+**Current Status**: Phase 2 In Progress - Reddit/WSB Sentiment Analysis:
+- Phase 1 Complete: Autonomous stock discovery, trailing stops, perpetual strategy loop
+- Phase 2 Added: Reddit API integration (PRAW) for r/wallstreetbets monitoring
+- Phase 2 Added: VADER sentiment analysis for social media text
+- Phase 2 Added: WSB trending stocks in dynamic watchlist
+- Phase 2 Added: Sentiment-adjusted signal confidence
+- Requires: Reddit API credentials to enable sentiment features
 
 ---
 
