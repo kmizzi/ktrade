@@ -240,3 +240,102 @@ class BotLog(Base):
 
     def __repr__(self) -> str:
         return f"<BotLog(id={self.id}, level={self.level}, event={self.event_type})>"
+
+
+class SentimentSource(enum.Enum):
+    """Source of sentiment data"""
+    REDDIT_WSB = "reddit_wsb"
+    REDDIT_STOCKS = "reddit_stocks"
+    REDDIT_INVESTING = "reddit_investing"
+    REDDIT_OPTIONS = "reddit_options"
+    TWITTER = "twitter"
+    NEWS = "news"
+
+
+class SentimentData(Base):
+    """
+    Stores sentiment data from various sources (Reddit, Twitter, News).
+    Used for sentiment-based trading signals and stock discovery.
+    """
+    __tablename__ = "sentiment_data"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(20), nullable=False, index=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    source = Column(SQLEnum(SentimentSource), nullable=False, index=True)
+
+    # Sentiment metrics
+    sentiment_score = Column(Float, nullable=False)  # -1 (bearish) to +1 (bullish)
+    mention_count = Column(Integer, default=0)
+    total_score = Column(Integer, default=0)  # Total upvotes/likes
+    avg_upvote_ratio = Column(Float, nullable=True)
+
+    # Breakdown
+    positive_pct = Column(Float, nullable=True)
+    negative_pct = Column(Float, nullable=True)
+    neutral_pct = Column(Float, nullable=True)
+
+    # Raw data for analysis
+    sample_titles = Column(JSON, nullable=True)  # Sample post titles
+    post_ids = Column(JSON, nullable=True)  # Reference to source posts
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<SentimentData(symbol={self.symbol}, source={self.source.value}, score={self.sentiment_score:.2f}, mentions={self.mention_count})>"
+
+    @property
+    def is_bullish(self) -> bool:
+        """Check if sentiment is bullish (> 0.05)"""
+        return self.sentiment_score > 0.05
+
+    @property
+    def is_bearish(self) -> bool:
+        """Check if sentiment is bearish (< -0.05)"""
+        return self.sentiment_score < -0.05
+
+    @property
+    def sentiment_label(self) -> str:
+        """Get human-readable sentiment label"""
+        if self.sentiment_score >= 0.5:
+            return "very_bullish"
+        elif self.sentiment_score >= 0.2:
+            return "bullish"
+        elif self.sentiment_score >= 0.05:
+            return "slightly_bullish"
+        elif self.sentiment_score <= -0.5:
+            return "very_bearish"
+        elif self.sentiment_score <= -0.2:
+            return "bearish"
+        elif self.sentiment_score <= -0.05:
+            return "slightly_bearish"
+        else:
+            return "neutral"
+
+
+class WsbTrending(Base):
+    """
+    Tracks trending stocks on r/wallstreetbets.
+    Refreshed periodically to capture momentum.
+    """
+    __tablename__ = "wsb_trending"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(20), nullable=False, index=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    # Trending metrics
+    mentions = Column(Integer, nullable=False)
+    rank = Column(Integer, nullable=True)  # Rank by mentions
+    sentiment_score = Column(Float, nullable=True)
+
+    # Additional context
+    total_score = Column(Integer, default=0)
+    sample_titles = Column(JSON, nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<WsbTrending(symbol={self.symbol}, mentions={self.mentions}, rank={self.rank})>"
