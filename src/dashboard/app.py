@@ -244,11 +244,11 @@ def render_recent_trades():
 
     df = pd.DataFrame(trades)
 
-    # Format columns
+    # Format columns with friendly date/time
     if 'timestamp' in df.columns:
-        df['Date'] = pd.to_datetime(df['timestamp']).dt.strftime('%Y-%m-%d %H:%M')
+        df['Date'] = pd.to_datetime(df['timestamp']).dt.strftime('%b %d, %Y %I:%M %p')
     elif 'date' in df.columns:
-        df['Date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
+        df['Date'] = pd.to_datetime(df['date']).dt.strftime('%b %d, %Y')
 
     if 'price' in df.columns:
         df['Price'] = df['price'].apply(lambda x: f"${x:.2f}")
