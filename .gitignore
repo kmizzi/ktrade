@@ -49,6 +49,10 @@ env/
 data/*.db
 data/*.sqlite
 
+# Backtest data and results
+data/backtest_cache/
+data/backtest_*.csv
+
 # Logs
 logs/
 *.log
