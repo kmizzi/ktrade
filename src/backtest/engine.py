@@ -198,8 +198,9 @@ class Backtester:
         if not current_prices:
             return
 
-        # Create datetime for this date
-        dt = datetime.combine(date, datetime.min.time())
+        # Create datetime for this date (use market close time 4:00 PM ET)
+        from datetime import time
+        dt = datetime.combine(date, time(16, 0, 0))
 
         # Check stop losses and take profits for existing positions
         for symbol in list(self.portfolio.positions.keys()):
@@ -310,7 +311,8 @@ class Backtester:
 
     def _close_all_positions(self, final_date):
         """Close all remaining positions at end of backtest."""
-        dt = datetime.combine(final_date, datetime.min.time())
+        from datetime import time
+        dt = datetime.combine(final_date, time(16, 0, 0))
 
         for symbol in list(self.portfolio.positions.keys()):
             if symbol in self._historical_data:
