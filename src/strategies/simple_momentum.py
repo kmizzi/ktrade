@@ -4,6 +4,7 @@ Simple Momentum Strategy.
 Buy Signal:
 - Price > 20-day SMA
 - RSI between 40 and 70 (not overbought/oversold)
+- (Optional) Bullish Reddit/WSB sentiment boosts confidence
 
 Sell Signal:
 - RSI > 75 (overbought)
@@ -12,7 +13,7 @@ Sell Signal:
 Stop Loss: -5% from entry
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from src.strategies.base import BaseStrategy, Signal
 from src.api.alpaca_client import alpaca_client
 from src.data.indicators import calculate_all_indicators, get_latest_indicators
@@ -20,6 +21,22 @@ from config.settings import settings
 import structlog
 
 logger = structlog.get_logger(__name__)
+
+# Lazy import for sentiment to avoid circular dependencies
+_sentiment_analyzer = None
+
+
+def _get_sentiment_analyzer():
+    """Lazy load sentiment analyzer."""
+    global _sentiment_analyzer
+    if _sentiment_analyzer is None:
+        try:
+            from src.data.sentiment import sentiment_analyzer
+            _sentiment_analyzer = sentiment_analyzer
+        except ImportError:
+            logger.debug("sentiment_analyzer_import_failed")
+            _sentiment_analyzer = False
+    return _sentiment_analyzer if _sentiment_analyzer else None
 
 
 class SimpleMomentumStrategy(BaseStrategy):
@@ -144,6 +161,26 @@ class SimpleMomentumStrategy(BaseStrategy):
                 )
 
                 if confidence >= self.min_confidence:
+                    # Apply sentiment adjustment if available
+                    sentiment_note = None
+                    sentiment_analyzer = _get_sentiment_analyzer()
+                    if sentiment_analyzer and settings.enable_reddit_sentiment:
+                        adjusted_conf, sentiment_note = sentiment_analyzer.adjust_signal_confidence(
+                            symbol, confidence, 'buy'
+                        )
+                        if adjusted_conf != confidence:
+                            self.logger.debug(
+                                "sentiment_adjusted_confidence",
+                                symbol=symbol,
+                                original=confidence,
+                                adjusted=adjusted_conf
+                            )
+                            confidence = adjusted_conf
+
+                    notes = f"Price above SMA ({price_distance_pct:.2f}%), RSI in buy range ({rsi:.1f})"
+                    if sentiment_note:
+                        notes = f"{notes} | {sentiment_note}"
+
                     return Signal(
                         symbol=symbol,
                         signal_type='buy',
@@ -154,9 +191,10 @@ class SimpleMomentumStrategy(BaseStrategy):
                             'rsi': rsi,
                             'sma_20': sma_20,
                             'price_distance_pct': price_distance_pct,
-                            'indicators': indicators
+                            'indicators': indicators,
+                            'sentiment_adjusted': sentiment_note is not None
                         },
-                        notes=f"Price above SMA ({price_distance_pct:.2f}%), RSI in buy range ({rsi:.1f})"
+                        notes=notes
                     )
 
         # Sell conditions - ONLY for symbols we own

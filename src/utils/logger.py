@@ -67,6 +67,12 @@ HUMAN_LOG_EVENTS = {
     'top_gainers_found',
     'high_volume_stocks_found',
 
+    # Reddit/Sentiment (Phase 2)
+    'wsb_trending_stocks',
+    'wsb_trending_fetched',
+    'reddit_sentiment_refreshed',
+    'sentiment_adjusted_confidence',
+
     # Errors and warnings (always include)
     'error_occurred',
     'error',
@@ -182,9 +188,30 @@ class HumanReadableFormatter(logging.Formatter):
             return f"{timestamp} | {level} | High volume: {', '.join(symbols)} ({count} total)"
 
         elif event == 'dynamic_watchlist_generated':
-            count = data.get('count', 0)
+            count = data.get('final_watchlist_size', data.get('count', 0))
             symbols = data.get('symbols', [])[:10]
-            return f"{timestamp} | {level} | Watchlist: {', '.join(symbols)} ({count} total)"
+            sources = data.get('sources', {})
+            wsb_count = sources.get('wsb_trending', 0)
+            source_info = f" [WSB: {wsb_count}]" if wsb_count > 0 else ""
+            return f"{timestamp} | {level} | Watchlist: {', '.join(symbols)} ({count} total){source_info}"
+
+        elif event == 'wsb_trending_stocks' or event == 'wsb_trending_fetched':
+            count = data.get('count', 0)
+            symbols = data.get('stocks', data.get('symbols', []))[:5]
+            if isinstance(symbols[0], dict) if symbols else False:
+                symbols = [s.get('symbol', '?') for s in symbols[:5]]
+            return f"{timestamp} | {level} | WSB Trending: {', '.join(symbols)} ({count} total)"
+
+        elif event == 'reddit_sentiment_refreshed':
+            unique_tickers = data.get('unique_tickers', 0)
+            total_posts = data.get('total_posts', 0)
+            return f"{timestamp} | {level} | Reddit sentiment refreshed: {unique_tickers} tickers from {total_posts} posts"
+
+        elif event == 'sentiment_adjusted_confidence':
+            symbol = data.get('symbol', '?')
+            original = data.get('original', 0)
+            adjusted = data.get('adjusted', 0)
+            return f"{timestamp} | {level} | Sentiment boost: {symbol} confidence {original:.0%} -> {adjusted:.0%}"
 
         elif event == 'scheduler_started':
             return f"{timestamp} | {level} | Scheduler started"

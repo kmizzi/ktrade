@@ -1,6 +1,6 @@
 """
 Stock scanner for discovering trading opportunities.
-Finds hot stocks using technical criteria, volume, and price action.
+Finds hot stocks using technical criteria, volume, price action, and social sentiment.
 """
 
 from typing import List, Dict, Any, Set, Optional
@@ -13,6 +13,36 @@ from config.settings import settings
 from src.api.alpaca_client import alpaca_client
 
 logger = structlog.get_logger(__name__)
+
+# Lazy import to avoid circular dependencies
+_reddit_client = None
+_sentiment_analyzer = None
+
+
+def _get_reddit_client():
+    """Lazy load Reddit client."""
+    global _reddit_client
+    if _reddit_client is None:
+        try:
+            from src.api.reddit_client import reddit_client
+            _reddit_client = reddit_client
+        except ImportError:
+            logger.warning("reddit_client_import_failed")
+            _reddit_client = False
+    return _reddit_client if _reddit_client else None
+
+
+def _get_sentiment_analyzer():
+    """Lazy load sentiment analyzer."""
+    global _sentiment_analyzer
+    if _sentiment_analyzer is None:
+        try:
+            from src.data.sentiment import sentiment_analyzer
+            _sentiment_analyzer = sentiment_analyzer
+        except ImportError:
+            logger.warning("sentiment_analyzer_import_failed")
+            _sentiment_analyzer = False
+    return _sentiment_analyzer if _sentiment_analyzer else None
 
 
 class StockScanner:
@@ -254,9 +284,101 @@ class StockScanner:
             logger.error("failed_to_get_breakout_stocks", error=str(e))
             return []
 
+    def get_wsb_trending(self, count: int = 10) -> List[Dict[str, Any]]:
+        """
+        Get trending stocks from r/wallstreetbets with sentiment.
+
+        Args:
+            count: Number of trending stocks to return
+
+        Returns:
+            List of trending stock data with sentiment
+        """
+        if not settings.enable_reddit_sentiment:
+            logger.debug("reddit_sentiment_disabled")
+            return []
+
+        reddit = _get_reddit_client()
+        sentiment = _get_sentiment_analyzer()
+
+        if not reddit or not reddit.is_available():
+            logger.debug("reddit_client_not_available")
+            return []
+
+        try:
+            # Get WSB trending stocks
+            trending = reddit.get_wsb_trending(
+                min_mentions=settings.wsb_mention_threshold
+            )
+
+            # Add sentiment data if available
+            if sentiment and sentiment.is_available():
+                sentiment_data = sentiment.get_reddit_sentiment()
+
+                for stock in trending:
+                    symbol = stock['symbol']
+                    if symbol in sentiment_data:
+                        stock['sentiment_score'] = sentiment_data[symbol]['avg_compound']
+                        stock['bullish_pct'] = sentiment_data[symbol]['bullish_pct']
+
+            logger.info(
+                "wsb_trending_fetched",
+                count=len(trending),
+                symbols=[t['symbol'] for t in trending[:count]]
+            )
+
+            return trending[:count]
+
+        except Exception as e:
+            logger.error("failed_to_get_wsb_trending", error=str(e))
+            return []
+
+    def get_wsb_symbols(self, count: int = 10) -> List[str]:
+        """
+        Get symbol list of WSB trending stocks.
+
+        Args:
+            count: Number of symbols to return
+
+        Returns:
+            List of stock symbols
+        """
+        trending = self.get_wsb_trending(count=count)
+        return [t['symbol'] for t in trending]
+
+    def get_sentiment_boosted_stocks(self, count: int = 5) -> List[str]:
+        """
+        Get stocks with very bullish sentiment from Reddit.
+
+        Args:
+            count: Number of stocks to return
+
+        Returns:
+            List of stock symbols with bullish sentiment
+        """
+        sentiment = _get_sentiment_analyzer()
+
+        if not sentiment or not sentiment.is_available():
+            return []
+
+        try:
+            summary = sentiment.get_wsb_sentiment_summary()
+
+            if not summary.get('available'):
+                return []
+
+            # Return most bullish stocks
+            bullish = summary.get('most_bullish', [])
+            return [s['symbol'] for s in bullish[:count]]
+
+        except Exception as e:
+            logger.error("failed_to_get_sentiment_boosted", error=str(e))
+            return []
+
     def get_dynamic_watchlist(self) -> List[str]:
         """
         Generate dynamic watchlist by combining multiple discovery methods.
+        Includes technical analysis and Reddit/WSB sentiment data.
 
         Returns:
             List of stock symbols (up to max_watchlist_size)
@@ -279,6 +401,18 @@ class StockScanner:
             breakouts = self.get_breakout_stocks(count=5)
             all_candidates.update(breakouts)
 
+            # Get WSB trending stocks (Phase 2 addition)
+            wsb_trending = []
+            if settings.enable_reddit_sentiment:
+                wsb_trending = self.get_wsb_symbols(count=10)
+                all_candidates.update(wsb_trending)
+
+            # Get sentiment-boosted stocks
+            sentiment_boosted = []
+            if settings.enable_reddit_sentiment:
+                sentiment_boosted = self.get_sentiment_boosted_stocks(count=5)
+                all_candidates.update(sentiment_boosted)
+
             # Add crypto (always include for diversification)
             crypto_symbols = settings.get_watchlist_crypto()
             all_candidates.update(crypto_symbols)
@@ -295,6 +429,8 @@ class StockScanner:
                     "gainers": len(gainers),
                     "high_volume": len(high_vol),
                     "breakouts": len(breakouts),
+                    "wsb_trending": len(wsb_trending),
+                    "sentiment_boosted": len(sentiment_boosted),
                     "crypto": len(crypto_symbols)
                 }
             )
