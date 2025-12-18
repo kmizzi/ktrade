@@ -122,6 +122,34 @@ class Settings(BaseSettings):
     strategy_eval_interval: int = Field(default=5, description="Strategy evaluation interval in minutes")
     portfolio_sync_interval: int = Field(default=60, description="Portfolio sync interval")
 
+    # Reddit API Configuration (Phase 2)
+    reddit_client_id: str = Field(default="", description="Reddit API client ID")
+    reddit_client_secret: str = Field(default="", description="Reddit API client secret")
+    reddit_user_agent: str = Field(
+        default="ktrade:v1.0 (by /u/ktrade_bot)",
+        description="Reddit API user agent"
+    )
+    enable_reddit_sentiment: bool = Field(
+        default=True,
+        description="Enable Reddit sentiment analysis"
+    )
+    reddit_subreddits: str = Field(
+        default="wallstreetbets,stocks,investing,options",
+        description="Comma-separated subreddits to monitor"
+    )
+    wsb_mention_threshold: int = Field(
+        default=5,
+        description="Minimum WSB mentions to consider a stock trending"
+    )
+    sentiment_weight: float = Field(
+        default=0.3,
+        description="Weight of sentiment in signal confidence (0.0-1.0)"
+    )
+    sentiment_refresh_minutes: int = Field(
+        default=30,
+        description="How often to refresh sentiment data (minutes)"
+    )
+
     @field_validator("bot_mode")
     @classmethod
     def validate_bot_mode(cls, v: str) -> str:
@@ -159,6 +187,10 @@ class Settings(BaseSettings):
     def get_full_watchlist(self) -> List[str]:
         """Get combined watchlist of stocks and crypto"""
         return self.get_watchlist_stocks() + self.get_watchlist_crypto()
+
+    def get_reddit_subreddits(self) -> List[str]:
+        """Get list of subreddits to monitor"""
+        return [s.strip() for s in self.reddit_subreddits.split(",") if s.strip()]
 
     @property
     def is_paper_trading(self) -> bool:
