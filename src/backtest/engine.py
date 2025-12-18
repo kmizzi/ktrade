@@ -31,7 +31,7 @@ class Backtester:
         strategy: BaseStrategy,
         initial_cash: float = 100000.0,
         commission: float = 0.0,
-        trailing_stop_pct: float = 7.0,
+        trailing_stop_pct: float = 10.0,
         use_trailing_stops: bool = True
     ):
         """

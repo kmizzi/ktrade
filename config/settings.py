@@ -61,8 +61,8 @@ class Settings(BaseSettings):
         description="Default hard stop loss percentage (protects against gap-downs)"
     )
     trailing_stop_pct: float = Field(
-        default=7.0,
-        description="Trailing stop percentage (trails price up, allows bigger gains)"
+        default=10.0,
+        description="Trailing stop percentage - optimized via backtesting (trails price up, allows bigger gains)"
     )
     tightened_trailing_stop_pct: float = Field(
         default=2.5,

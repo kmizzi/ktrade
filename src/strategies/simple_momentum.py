@@ -47,8 +47,8 @@ class SimpleMomentumStrategy(BaseStrategy):
     def __init__(self, enabled: bool = True):
         super().__init__(name="simple_momentum", enabled=enabled)
 
-        # Strategy parameters
-        self.rsi_buy_min = 40
+        # Strategy parameters (optimized via backtesting)
+        self.rsi_buy_min = 35  # Widened from 40 to catch more momentum entries
         self.rsi_buy_max = 70
         self.rsi_sell_threshold = 75
         self.sma_period = 20
