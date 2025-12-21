@@ -442,6 +442,82 @@ class AlpacaClient:
             )
             raise
 
+    @handle_rate_limit
+    def place_limit_order(
+        self,
+        symbol: str,
+        qty: float,
+        limit_price: float,
+        side: str,
+        time_in_force: str = "gtc",
+        client_order_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Place a limit order at a specified price.
+
+        Used by grid trading strategy to place orders at predetermined levels.
+
+        Args:
+            symbol: Stock or crypto symbol
+            qty: Quantity to buy/sell
+            limit_price: Price at which to execute
+            side: 'buy' or 'sell'
+            time_in_force: Order time in force (default: 'gtc')
+            client_order_id: Optional client-specified order ID for tracking
+
+        Returns:
+            Order details
+        """
+        try:
+            order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+            tif = TimeInForce.GTC if time_in_force.lower() == "gtc" else TimeInForce.DAY
+
+            request = LimitOrderRequest(
+                symbol=symbol,
+                qty=qty,
+                side=order_side,
+                limit_price=limit_price,
+                time_in_force=tif,
+                client_order_id=client_order_id
+            )
+
+            order = self.trading_client.submit_order(request)
+
+            logger.info(
+                "limit_order_placed",
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                limit_price=limit_price,
+                order_id=order.id,
+                client_order_id=client_order_id
+            )
+
+            return {
+                "id": order.id,
+                "client_order_id": order.client_order_id,
+                "symbol": order.symbol,
+                "qty": float(order.qty) if order.qty else 0,
+                "side": order.side.value,
+                "type": order.type.value,
+                "limit_price": limit_price,
+                "status": order.status.value,
+                "filled_qty": float(order.filled_qty) if order.filled_qty else 0,
+                "filled_avg_price": float(order.filled_avg_price) if order.filled_avg_price else None,
+                "submitted_at": order.submitted_at,
+            }
+
+        except Exception as e:
+            logger.error(
+                "failed_to_place_limit_order",
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                limit_price=limit_price,
+                error=str(e)
+            )
+            raise
+
     def cancel_order(self, order_id: str) -> bool:
         """
         Cancel an order by ID.

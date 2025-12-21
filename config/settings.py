@@ -41,8 +41,53 @@ class Settings(BaseSettings):
     enable_simple_momentum: bool = Field(default=True)
     enable_dca: bool = Field(default=True)
     enable_grid_trading: bool = Field(default=True)
+    grid_spacing_pct: float = Field(
+        default=2.0,
+        description="Spacing between grid levels as percentage"
+    )
+    grid_levels: int = Field(
+        default=5,
+        description="Number of grid levels above and below center"
+    )
+    grid_symbols: str = Field(
+        default="BTC/USD,ETH/USD",
+        description="Comma-separated crypto symbols for grid trading"
+    )
+    grid_allocation_pct: float = Field(
+        default=20.0,
+        description="Portfolio allocation for grid trading as percentage"
+    )
+    grid_boundary_stop_pct: float = Field(
+        default=15.0,
+        description="Stop grid if price breaks this percentage outside range"
+    )
+    grid_recenter_threshold_pct: float = Field(
+        default=10.0,
+        description="Recenter grid if price deviates by this percentage"
+    )
+    grid_check_interval_minutes: int = Field(
+        default=5,
+        description="How often to check grid orders for fills"
+    )
     enable_sentiment_momentum: bool = Field(default=False)  # Legacy
     enable_news_momentum: bool = Field(default=True)  # News-driven momentum strategy
+    enable_technical_breakout: bool = Field(default=True)  # Technical breakout strategy
+    breakout_resistance_period: int = Field(
+        default=50,
+        description="Period for calculating resistance (N-day high)"
+    )
+    breakout_support_period: int = Field(
+        default=20,
+        description="Period for calculating support (N-day low)"
+    )
+    breakout_volume_multiplier: float = Field(
+        default=1.5,
+        description="Required volume multiplier for breakout confirmation"
+    )
+    breakout_profit_target_pct: float = Field(
+        default=8.0,
+        description="Profit target percentage for breakout trades"
+    )
 
     # Risk Management
     max_position_size_pct: float = Field(

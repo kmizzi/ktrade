@@ -23,6 +23,8 @@ from src.utils.logger import setup_logging
 from src.database.session import get_db_session, init_db
 from src.database.models import Signal, Position, PositionStatus, SignalType
 from src.strategies.simple_momentum import SimpleMomentumStrategy
+from src.strategies.technical_breakout import TechnicalBreakoutStrategy
+from src.strategies.grid_trading import grid_trading_strategy
 from src.core.risk_manager import risk_manager
 from src.core.order_executor import order_executor
 from src.core.portfolio import portfolio_tracker
@@ -36,6 +38,8 @@ logger = setup_logging()
 strategies = []
 if settings.enable_simple_momentum:
     strategies.append(SimpleMomentumStrategy(enabled=True))
+if settings.enable_technical_breakout:
+    strategies.append(TechnicalBreakoutStrategy(enabled=True))
 
 # Scheduler
 scheduler = BlockingScheduler()
@@ -469,6 +473,44 @@ def monitor_positions():
         logger.error("position_monitoring_error", error=str(e))
 
 
+def run_grid_trading_cycle():
+    """
+    Run grid trading cycle for crypto assets.
+
+    Grid trading runs independently of momentum strategies:
+    - Manages limit orders at predetermined price levels
+    - Checks for filled orders and places replacements
+    - Works 24/7 for crypto markets
+    """
+    if not settings.enable_grid_trading:
+        return
+
+    logger.info("grid_trading_cycle_started")
+
+    try:
+        result = grid_trading_strategy.run_grid_cycle()
+
+        # Log summary
+        for symbol, symbol_result in result.get("symbols", {}).items():
+            action = symbol_result.get("action")
+            if action and action != "update":  # Don't log routine updates
+                logger.info(
+                    "grid_action",
+                    symbol=symbol,
+                    action=action,
+                    details=symbol_result.get("details", {})
+                )
+
+        if result.get("errors"):
+            for error in result["errors"]:
+                logger.error("grid_error", **error)
+
+        logger.info("grid_trading_cycle_completed")
+
+    except Exception as e:
+        logger.error("grid_trading_cycle_error", error=str(e))
+
+
 def sync_portfolio():
     """Sync portfolio with Alpaca and save snapshot"""
     logger.info("portfolio_sync_started")
@@ -510,6 +552,9 @@ def run_strategy_cycle():
         # Finally monitor existing positions
         monitor_positions()
 
+        # Run grid trading cycle (crypto - runs regardless of stock market hours)
+        run_grid_trading_cycle()
+
     except Exception as e:
         logger.error("strategy_cycle_error", error=str(e))
     finally:
@@ -520,31 +565,45 @@ def run_perpetual_strategy_loop():
     """
     Run strategy cycles perpetually during market hours.
     Only backs off when hitting Alpaca rate limits (429 errors).
+
+    Note: Grid trading for crypto runs 24/7 regardless of stock market hours.
     """
     global shutdown_requested
 
     cycle_count = 0
+    grid_interval = settings.grid_check_interval_minutes * 60  # Convert to seconds
+    last_grid_run = 0
 
     while not shutdown_requested:
         try:
+            current_time = time.time()
+
             # Check if market is open
-            if not alpaca_client.is_market_open():
-                # Market closed - wait and check again
+            market_open = alpaca_client.is_market_open()
+
+            if not market_open:
+                # Market closed - but still run grid trading for crypto (24/7)
+                if settings.enable_grid_trading and (current_time - last_grid_run) >= grid_interval:
+                    logger.info("running_grid_cycle_market_closed")
+                    run_grid_trading_cycle()
+                    last_grid_run = current_time
+
+                # Wait before checking again
                 clock = alpaca_client.get_clock()
                 next_open = clock.get('next_open')
-                logger.info(
+                logger.debug(
                     "market_closed_waiting",
                     next_open=str(next_open) if next_open else "unknown"
                 )
-                # Sleep for 60 seconds before checking again
                 time.sleep(60)
                 continue
 
-            # Run a strategy cycle
+            # Run a full strategy cycle (includes grid trading)
             cycle_count += 1
             logger.info("perpetual_cycle_starting", cycle=cycle_count)
 
             run_strategy_cycle()
+            last_grid_run = current_time  # Grid ran as part of strategy cycle
 
             logger.info("perpetual_cycle_completed", cycle=cycle_count)
 
