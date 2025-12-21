@@ -244,8 +244,21 @@ def get_latest_indicators(df: pd.DataFrame) -> Dict[str, Any]:
         return {}
 
     latest = df.iloc[-1]
+
+    # Calculate volume SMA if we have enough data
+    volume_sma = None
+    if 'volume' in df.columns and len(df) >= 20:
+        volume_sma = float(df['volume'].tail(20).mean())
+
     return {
+        # Price data
+        "open": float(latest.get('open', 0)) if pd.notna(latest.get('open')) else None,
+        "high": float(latest.get('high', 0)) if pd.notna(latest.get('high')) else None,
+        "low": float(latest.get('low', 0)) if pd.notna(latest.get('low')) else None,
         "close": float(latest.get('close', 0)),
+        "volume": float(latest.get('volume', 0)) if pd.notna(latest.get('volume')) else None,
+        "volume_sma": volume_sma,
+        # Technical indicators
         "rsi": float(latest.get('rsi', 0)) if pd.notna(latest.get('rsi')) else None,
         "sma_20": float(latest.get('sma_20', 0)) if pd.notna(latest.get('sma_20')) else None,
         "sma_50": float(latest.get('sma_50', 0)) if pd.notna(latest.get('sma_50')) else None,

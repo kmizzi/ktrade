@@ -41,7 +41,8 @@ class Settings(BaseSettings):
     enable_simple_momentum: bool = Field(default=True)
     enable_dca: bool = Field(default=True)
     enable_grid_trading: bool = Field(default=True)
-    enable_sentiment_momentum: bool = Field(default=False)
+    enable_sentiment_momentum: bool = Field(default=False)  # Legacy
+    enable_news_momentum: bool = Field(default=True)  # News-driven momentum strategy
 
     # Risk Management
     max_position_size_pct: float = Field(
