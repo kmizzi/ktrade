@@ -445,8 +445,24 @@ def get_market_news_sentiment() -> Dict[str, Any]:
         return {}
 
 
+def get_rate_limit_status() -> Dict[str, Any]:
+    """Get Alpha Vantage rate limit status."""
+    if not SENTIMENT_AVAILABLE:
+        return {}
+
+    try:
+        return news_provider.get_rate_limit_status()
+    except Exception as e:
+        print(f"Error getting rate limit status: {e}")
+        return {}
+
+
 def get_watchlist_news_sentiment() -> List[Dict[str, Any]]:
-    """Get news sentiment for watchlist symbols."""
+    """
+    Get news sentiment for watchlist symbols.
+    Uses cached data when available to conserve API calls.
+    Only fetches 1 symbol per call to spread requests over time.
+    """
     if not SENTIMENT_AVAILABLE:
         return []
 
@@ -456,8 +472,18 @@ def get_watchlist_news_sentiment() -> List[Dict[str, Any]]:
         symbols = [p['symbol'] for p in positions] if positions else ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'NVDA']
 
         results = []
-        for symbol in symbols[:5]:  # Limit to 5 to conserve API calls
+
+        # Check rate limit status
+        rate_status = news_provider.get_rate_limit_status()
+        remaining = rate_status.get('requests_remaining', 0)
+
+        # If low on requests, only return cached data
+        fetch_new = remaining > 10
+
+        for symbol in symbols[:5]:  # Limit to 5 symbols
+            # Try to get cached sentiment first (won't make API call if cached)
             sentiment = news_provider.get_news_sentiment(symbol)
+
             if sentiment and 'error' not in sentiment:
                 results.append({
                     'symbol': symbol,
@@ -465,6 +491,10 @@ def get_watchlist_news_sentiment() -> List[Dict[str, Any]]:
                     'article_count': sentiment.get('article_count', 0),
                     'sentiment_label': sentiment.get('sentiment_label', 'Neutral'),
                 })
+
+            # Stop fetching if we've used requests and are low on quota
+            if not fetch_new and len(results) >= 1:
+                break
 
         return results
     except Exception as e:

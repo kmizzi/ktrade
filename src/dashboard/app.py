@@ -32,6 +32,7 @@ from src.dashboard.data_loader import (
     get_news_headlines,
     get_market_news_sentiment,
     get_watchlist_news_sentiment,
+    get_rate_limit_status,
 )
 
 # Page config
@@ -314,6 +315,26 @@ def render_metrics():
 def render_sentiment():
     """Render sentiment analysis section."""
     st.subheader("Market Sentiment")
+
+    # Show rate limit status
+    rate_status = get_rate_limit_status()
+    if rate_status and 'requests_remaining' in rate_status:
+        remaining = rate_status['requests_remaining']
+        made = rate_status['requests_made']
+        limit = rate_status['daily_limit']
+
+        # Color based on remaining
+        if remaining > 15:
+            status_color = "🟢"
+        elif remaining > 5:
+            status_color = "🟡"
+        else:
+            status_color = "🔴"
+
+        st.caption(
+            f"{status_color} API Quota: {remaining}/{limit} remaining today "
+            f"(refreshes ~every {rate_status.get('recommended_interval_minutes', 60)} min)"
+        )
 
     # Market mood from news
     market_news = get_market_news_sentiment()

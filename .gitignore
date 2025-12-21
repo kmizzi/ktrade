@@ -98,3 +98,4 @@ dmypy.json
 *.bak
 *.swp
 .cache/
+data/

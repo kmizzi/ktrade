@@ -4,6 +4,8 @@ Provides news sentiment analysis for stocks.
 
 Requires Alpha Vantage API key (free tier: 25 requests/day).
 Get key at: https://www.alphavantage.co/support/#api-key
+
+Rate limiting is managed to spread requests across trading hours.
 """
 
 import requests
@@ -15,11 +17,27 @@ logger = structlog.get_logger(__name__)
 
 ALPHA_VANTAGE_BASE = "https://www.alphavantage.co/query"
 
+# Import rate limiter (created lazily to avoid circular imports)
+_rate_limiter = None
+
+
+def _get_rate_limiter():
+    """Get rate limiter instance (lazy loading)."""
+    global _rate_limiter
+    if _rate_limiter is None:
+        try:
+            from src.data.sentiment_providers.rate_limiter import rate_limiter
+            _rate_limiter = rate_limiter
+        except ImportError:
+            _rate_limiter = None
+    return _rate_limiter
+
 
 class NewsProvider:
     """
     Provider for news sentiment data using Alpha Vantage.
     Free tier: 25 requests/day, 5 requests/minute.
+    Uses smart rate limiting to spread requests across trading hours.
     """
 
     def __init__(self, api_key: Optional[str] = None):
@@ -32,9 +50,10 @@ class NewsProvider:
         self.api_key = api_key
         self._cache: Dict[str, Dict[str, Any]] = {}
         self._cache_times: Dict[str, datetime] = {}
-        self._cache_ttl = timedelta(hours=1)  # News doesn't change as frequently
+        self._cache_ttl = timedelta(hours=2)  # Extended cache to conserve API calls
         self._market_cache: Dict[str, Any] = {}
         self._market_cache_time: Optional[datetime] = None
+        self._market_cache_ttl = timedelta(hours=1)  # Market sentiment refreshes more often
 
     def set_api_key(self, api_key: str):
         """Set API key."""
@@ -50,7 +69,27 @@ class NewsProvider:
         """Check if market sentiment cache is valid."""
         if not self._market_cache_time:
             return False
-        return datetime.utcnow() - self._market_cache_time < self._cache_ttl
+        return datetime.utcnow() - self._market_cache_time < self._market_cache_ttl
+
+    def _check_rate_limit(self, priority: str = "normal") -> tuple:
+        """Check if we can make a request."""
+        limiter = _get_rate_limiter()
+        if limiter:
+            return limiter.can_make_request(priority)
+        return True, "No rate limiter"
+
+    def _record_request(self, endpoint: str):
+        """Record that a request was made."""
+        limiter = _get_rate_limiter()
+        if limiter:
+            limiter.record_request(endpoint)
+
+    def get_rate_limit_status(self) -> Dict[str, Any]:
+        """Get current rate limit status."""
+        limiter = _get_rate_limiter()
+        if limiter:
+            return limiter.get_status()
+        return {'error': 'Rate limiter not available'}
 
     def get_news_sentiment(
         self,
@@ -79,7 +118,22 @@ class NewsProvider:
         symbol = symbol.upper()
 
         if not force_refresh and self._is_cache_valid(symbol):
+            logger.debug("news_cache_hit", symbol=symbol)
             return self._cache[symbol]
+
+        # Check rate limit before making request
+        can_request, reason = self._check_rate_limit(priority="normal")
+        if not can_request:
+            logger.warning("news_rate_limited", symbol=symbol, reason=reason)
+            # Return cached data if available, otherwise error
+            if symbol in self._cache:
+                return self._cache[symbol]
+            return {
+                'symbol': symbol,
+                'error': f'Rate limited: {reason}',
+                'sentiment_score': 0,
+                'articles': []
+            }
 
         try:
             response = requests.get(
@@ -93,6 +147,9 @@ class NewsProvider:
                 },
                 timeout=15
             )
+
+            # Record the request
+            self._record_request(f"NEWS_SENTIMENT/{symbol}")
 
             if response.status_code == 200:
                 data = response.json()
@@ -219,7 +276,16 @@ class NewsProvider:
             return {'error': 'No API key configured'}
 
         if not force_refresh and self._is_market_cache_valid():
+            logger.debug("market_cache_hit")
             return self._market_cache
+
+        # Check rate limit - market sentiment is high priority
+        can_request, reason = self._check_rate_limit(priority="high")
+        if not can_request:
+            logger.warning("market_sentiment_rate_limited", reason=reason)
+            if self._market_cache:
+                return self._market_cache
+            return {'error': f'Rate limited: {reason}'}
 
         try:
             response = requests.get(
@@ -233,6 +299,9 @@ class NewsProvider:
                 },
                 timeout=15
             )
+
+            # Record the request
+            self._record_request("NEWS_SENTIMENT/market")
 
             if response.status_code == 200:
                 data = response.json()
