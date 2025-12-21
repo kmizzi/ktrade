@@ -29,6 +29,12 @@ try:
 except Exception:
     ALPACA_AVAILABLE = False
 
+try:
+    from src.data.sentiment_providers import sentiment_aggregator, quiver_provider, stocktwits_provider
+    SENTIMENT_AVAILABLE = True
+except Exception:
+    SENTIMENT_AVAILABLE = False
+
 
 def is_market_open() -> bool:
     """Check if market is currently open."""
@@ -342,3 +348,62 @@ def get_daily_pnl_history(days: int = 30) -> pd.DataFrame:
     df = df.tail(days)
 
     return df[['date', 'daily_pnl', 'daily_pnl_pct']]
+
+
+def get_wsb_trending() -> List[Dict[str, Any]]:
+    """Get WSB trending stocks from Quiver Quant."""
+    if not SENTIMENT_AVAILABLE:
+        return []
+
+    try:
+        return quiver_provider.get_top_mentioned(limit=15)
+    except Exception as e:
+        print(f"Error getting WSB trending: {e}")
+        return []
+
+
+def get_stocktwits_trending() -> List[Dict[str, Any]]:
+    """Get StockTwits trending stocks."""
+    if not SENTIMENT_AVAILABLE:
+        return []
+
+    try:
+        return stocktwits_provider.get_trending()
+    except Exception as e:
+        print(f"Error getting StockTwits trending: {e}")
+        return []
+
+
+def get_symbol_sentiment(symbol: str) -> Dict[str, Any]:
+    """Get aggregated sentiment for a symbol."""
+    if not SENTIMENT_AVAILABLE:
+        return {}
+
+    try:
+        sentiment = sentiment_aggregator.get_sentiment(symbol, include_news=False)
+        return {
+            'symbol': sentiment.symbol,
+            'overall_score': sentiment.overall_score,
+            'overall_label': sentiment.overall_label,
+            'confidence': sentiment.confidence,
+            'wsb_mentions': sentiment.wsb_mentions,
+            'wsb_score': sentiment.wsb_score,
+            'wsb_trending': sentiment.wsb_trending,
+            'stocktwits_score': sentiment.stocktwits_score,
+            'stocktwits_bullish_pct': sentiment.stocktwits_bullish_pct,
+        }
+    except Exception as e:
+        print(f"Error getting sentiment for {symbol}: {e}")
+        return {}
+
+
+def get_market_mood() -> Dict[str, Any]:
+    """Get overall market mood from sentiment sources."""
+    if not SENTIMENT_AVAILABLE:
+        return {'mood': 'Unknown', 'emoji': '❓'}
+
+    try:
+        return sentiment_aggregator.get_market_mood()
+    except Exception as e:
+        print(f"Error getting market mood: {e}")
+        return {'mood': 'Unknown', 'emoji': '❓'}

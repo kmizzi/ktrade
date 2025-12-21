@@ -23,20 +23,23 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 # Lazy import for sentiment to avoid circular dependencies
-_sentiment_analyzer = None
+_sentiment_aggregator = None
 
 
-def _get_sentiment_analyzer():
-    """Lazy load sentiment analyzer."""
-    global _sentiment_analyzer
-    if _sentiment_analyzer is None:
+def _get_sentiment_aggregator():
+    """Lazy load sentiment aggregator (combines WSB, StockTwits, News)."""
+    global _sentiment_aggregator
+    if _sentiment_aggregator is None:
         try:
-            from src.data.sentiment import sentiment_analyzer
-            _sentiment_analyzer = sentiment_analyzer
+            from src.data.sentiment_providers import sentiment_aggregator
+            # Set API key if configured
+            if settings.alpha_vantage_api_key:
+                sentiment_aggregator.set_alpha_vantage_key(settings.alpha_vantage_api_key)
+            _sentiment_aggregator = sentiment_aggregator
         except ImportError:
-            logger.debug("sentiment_analyzer_import_failed")
-            _sentiment_analyzer = False
-    return _sentiment_analyzer if _sentiment_analyzer else None
+            logger.debug("sentiment_aggregator_import_failed")
+            _sentiment_aggregator = False
+    return _sentiment_aggregator if _sentiment_aggregator else None
 
 
 class SimpleMomentumStrategy(BaseStrategy):
@@ -163,17 +166,18 @@ class SimpleMomentumStrategy(BaseStrategy):
                 if confidence >= self.min_confidence:
                     # Apply sentiment adjustment if available
                     sentiment_note = None
-                    sentiment_analyzer = _get_sentiment_analyzer()
-                    if sentiment_analyzer and settings.enable_reddit_sentiment:
-                        adjusted_conf, sentiment_note = sentiment_analyzer.adjust_signal_confidence(
-                            symbol, confidence, 'buy'
+                    aggregator = _get_sentiment_aggregator()
+                    if aggregator and (settings.enable_wsb_tracking or settings.enable_stocktwits_sentiment):
+                        adjusted_conf, sentiment_note = aggregator.get_signal_adjustment(
+                            symbol, 'buy', confidence
                         )
                         if adjusted_conf != confidence:
                             self.logger.debug(
                                 "sentiment_adjusted_confidence",
                                 symbol=symbol,
                                 original=confidence,
-                                adjusted=adjusted_conf
+                                adjusted=adjusted_conf,
+                                note=sentiment_note
                             )
                             confidence = adjusted_conf
 

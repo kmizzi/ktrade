@@ -24,6 +24,10 @@ from src.dashboard.data_loader import (
     get_backtest_results,
     get_performance_metrics,
     is_market_open,
+    get_wsb_trending,
+    get_stocktwits_trending,
+    get_symbol_sentiment,
+    get_market_mood,
 )
 
 # Page config
@@ -303,6 +307,62 @@ def render_metrics():
         st.metric("Avg Trade", format_pct(metrics.get('avg_trade_pct', 0)))
 
 
+def render_sentiment():
+    """Render sentiment analysis section."""
+    st.subheader("Market Sentiment")
+
+    # Market mood
+    mood = get_market_mood()
+    st.markdown(f"### {mood.get('emoji', '❓')} Market Mood: **{mood.get('mood', 'Unknown')}**")
+
+    # Two columns for WSB and StockTwits
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### 🦍 WSB Trending")
+        wsb_trending = get_wsb_trending()
+
+        if wsb_trending:
+            wsb_df = pd.DataFrame(wsb_trending)
+            if 'symbol' in wsb_df.columns and 'mentions' in wsb_df.columns:
+                # Format sentiment
+                if 'sentiment' in wsb_df.columns:
+                    wsb_df['Sentiment'] = wsb_df['sentiment'].apply(
+                        lambda x: f"{'🟢' if x > 0.1 else '🔴' if x < -0.1 else '🟡'} {x:.2f}"
+                    )
+
+                display_cols = ['symbol', 'mentions']
+                if 'Sentiment' in wsb_df.columns:
+                    display_cols.append('Sentiment')
+
+                st.dataframe(
+                    wsb_df[display_cols].head(10),
+                    use_container_width=True,
+                    hide_index=True
+                )
+        else:
+            st.info("WSB data unavailable")
+
+    with col2:
+        st.markdown("#### 📱 StockTwits Trending")
+        st_trending = get_stocktwits_trending()
+
+        if st_trending:
+            st_df = pd.DataFrame(st_trending)
+            if 'symbol' in st_df.columns:
+                display_cols = ['symbol']
+                if 'watchlist_count' in st_df.columns:
+                    display_cols.append('watchlist_count')
+
+                st.dataframe(
+                    st_df[display_cols].head(10),
+                    use_container_width=True,
+                    hide_index=True
+                )
+        else:
+            st.info("StockTwits data unavailable")
+
+
 def render_backtest_selector():
     """Render backtest results selector."""
     st.subheader("Backtest Results")
@@ -424,6 +484,11 @@ def main():
 
         with col2:
             render_recent_trades()
+
+        st.divider()
+
+        # Sentiment section
+        render_sentiment()
 
     else:
         # Backtest view

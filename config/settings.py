@@ -150,6 +150,24 @@ class Settings(BaseSettings):
         description="How often to refresh sentiment data (minutes)"
     )
 
+    # Additional Sentiment Providers
+    alpha_vantage_api_key: str = Field(
+        default="",
+        description="Alpha Vantage API key for news sentiment (free: 25 req/day)"
+    )
+    enable_stocktwits_sentiment: bool = Field(
+        default=True,
+        description="Enable StockTwits sentiment (no API key needed)"
+    )
+    enable_wsb_tracking: bool = Field(
+        default=True,
+        description="Enable WSB tracking via Quiver Quant"
+    )
+    enable_news_sentiment: bool = Field(
+        default=True,
+        description="Enable news sentiment (requires Alpha Vantage key)"
+    )
+
     @field_validator("bot_mode")
     @classmethod
     def validate_bot_mode(cls, v: str) -> str:
