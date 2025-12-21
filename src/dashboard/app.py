@@ -33,6 +33,10 @@ from src.dashboard.data_loader import (
     get_market_news_sentiment,
     get_watchlist_news_sentiment,
     get_rate_limit_status,
+    get_current_signals,
+    get_strategy_performance,
+    get_risk_metrics,
+    get_watchlist_data,
 )
 
 # Page config
@@ -471,6 +475,241 @@ def render_sentiment():
                 st.caption("API temporarily unavailable")
 
 
+def render_trading_signals():
+    """Render current trading signals panel."""
+    st.subheader("📡 Trading Signals")
+
+    # Use session state to cache signals
+    if 'signals_cache' not in st.session_state:
+        st.session_state.signals_cache = None
+
+    col1, col2 = st.columns([3, 1])
+
+    with col2:
+        if st.button("🔄 Refresh Signals", key="refresh_signals"):
+            with st.spinner("Generating signals..."):
+                st.session_state.signals_cache = get_current_signals()
+            st.rerun()
+
+    with col1:
+        if st.session_state.signals_cache is None:
+            st.info("Click 'Refresh Signals' to generate current trading signals")
+            return
+
+    signals = st.session_state.signals_cache
+
+    if not signals:
+        st.info("No trading signals generated. Market may be closed or no opportunities detected.")
+        return
+
+    # Group signals by type
+    buy_signals = [s for s in signals if s['signal_type'] == 'buy']
+    sell_signals = [s for s in signals if s['signal_type'] == 'sell']
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### 🟢 BUY Signals")
+        if buy_signals:
+            for sig in buy_signals[:5]:
+                confidence_pct = sig['confidence'] * 100
+                emoji = "🔥" if confidence_pct >= 80 else "✅" if confidence_pct >= 70 else "📈"
+                st.markdown(
+                    f"{emoji} **{sig['symbol']}** - {confidence_pct:.0f}% confidence\n\n"
+                    f"   *{sig['strategy']}*: {sig['notes'][:60]}..."
+                )
+        else:
+            st.caption("No buy signals")
+
+    with col2:
+        st.markdown("#### 🔴 SELL Signals")
+        if sell_signals:
+            for sig in sell_signals[:5]:
+                confidence_pct = sig['confidence'] * 100
+                emoji = "⚠️" if confidence_pct >= 80 else "📉"
+                st.markdown(
+                    f"{emoji} **{sig['symbol']}** - {confidence_pct:.0f}% confidence\n\n"
+                    f"   *{sig['strategy']}*: {sig['notes'][:60]}..."
+                )
+        else:
+            st.caption("No sell signals")
+
+
+def render_strategy_performance():
+    """Render strategy performance breakdown."""
+    st.subheader("📊 Strategy Performance")
+
+    perf = get_strategy_performance()
+
+    if not perf:
+        st.info("No strategy performance data available. Execute some trades first.")
+        return
+
+    # Create columns for each strategy
+    cols = st.columns(len(perf))
+
+    strategy_names = {
+        'simple_momentum': '📈 Momentum',
+        'news_momentum': '📰 News',
+        'dca': '💰 DCA',
+        'grid': '📐 Grid',
+        'other': '❓ Other',
+    }
+
+    for idx, (strat_name, stats) in enumerate(perf.items()):
+        with cols[idx]:
+            display_name = strategy_names.get(strat_name, strat_name)
+            st.markdown(f"**{display_name}**")
+
+            st.metric("Trades", stats['trades'])
+            st.caption(f"📥 {stats['buys']} buys / 📤 {stats['sells']} sells")
+            st.caption(f"🏷️ {stats['symbols_traded']} symbols")
+            st.caption(f"💵 ${stats['total_value']:,.0f} volume")
+
+            # Show percentage as progress bar
+            st.progress(min(1.0, stats['pct_of_trades'] / 100))
+            st.caption(f"{stats['pct_of_trades']:.1f}% of trades")
+
+
+def render_risk_monitor():
+    """Render risk monitoring section."""
+    st.subheader("⚠️ Risk Monitor")
+
+    risk = get_risk_metrics()
+
+    if not risk:
+        st.info("No risk data available.")
+        return
+
+    # Create three columns for different risk categories
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("#### Daily Loss Limit")
+
+        # Progress bar for daily loss
+        used_pct = risk['daily_loss_used_pct']
+        limit_pct = risk['daily_loss_limit_pct']
+        progress = min(1.0, used_pct / limit_pct) if limit_pct > 0 else 0
+
+        if risk['daily_loss_critical']:
+            st.error(f"🛑 LIMIT REACHED: {used_pct:.2f}% / {limit_pct:.1f}%")
+        elif risk['daily_loss_warning']:
+            st.warning(f"⚠️ Warning: {used_pct:.2f}% / {limit_pct:.1f}%")
+        else:
+            st.success(f"✅ OK: {used_pct:.2f}% / {limit_pct:.1f}%")
+
+        st.progress(progress)
+        st.caption(f"Today's P&L: {format_currency(risk['daily_pnl'])} ({format_pct(risk['daily_pnl_pct'])})")
+
+    with col2:
+        st.markdown("#### Portfolio Exposure")
+
+        exposure = risk['exposure_pct']
+        max_exp = risk['max_exposure_pct']
+        exp_progress = min(1.0, exposure / max_exp) if max_exp > 0 else 0
+
+        if risk['exposure_warning']:
+            st.warning(f"⚠️ Near max: {exposure:.1f}% / {max_exp:.1f}%")
+        else:
+            st.success(f"✅ OK: {exposure:.1f}% / {max_exp:.1f}%")
+
+        st.progress(exp_progress)
+        st.caption(f"Cash: {format_currency(risk['cash'])}")
+        st.caption(f"Invested: {format_currency(risk['positions_value'])}")
+
+    with col3:
+        st.markdown("#### Position Concentration")
+
+        largest = risk['largest_position_pct']
+        max_size = risk['max_position_size_pct']
+        conc_progress = min(1.0, largest / max_size) if max_size > 0 else 0
+
+        if risk['concentration_warning']:
+            st.warning(f"⚠️ {risk['largest_position_symbol']}: {largest:.1f}% / {max_size:.1f}%")
+        else:
+            if risk['largest_position_symbol']:
+                st.success(f"✅ {risk['largest_position_symbol']}: {largest:.1f}% / {max_size:.1f}%")
+            else:
+                st.info("No positions")
+
+        st.progress(conc_progress)
+        st.caption(f"{risk['num_positions']} open positions")
+
+
+def render_live_watchlist():
+    """Render live watchlist with prices and signals."""
+    st.subheader("👁️ Live Watchlist")
+
+    # Use session state to cache watchlist data
+    if 'watchlist_cache' not in st.session_state:
+        st.session_state.watchlist_cache = None
+
+    col1, col2 = st.columns([3, 1])
+
+    with col2:
+        if st.button("🔄 Refresh Watchlist", key="refresh_watchlist"):
+            with st.spinner("Fetching market data..."):
+                st.session_state.watchlist_cache = get_watchlist_data()
+            st.rerun()
+
+    with col1:
+        if st.session_state.watchlist_cache is None:
+            st.info("Click 'Refresh Watchlist' to load current prices and signals")
+            return
+
+    watchlist = st.session_state.watchlist_cache
+
+    if not watchlist:
+        st.info("No watchlist data available. Check your watchlist configuration.")
+        return
+
+    # Convert to DataFrame for display
+    df = pd.DataFrame(watchlist)
+
+    # Format columns
+    df['Price'] = df['price'].apply(lambda x: f"${x:.2f}")
+    df['Change'] = df['change_pct'].apply(lambda x: f"{x:+.2f}%")
+    df['RSI'] = df['rsi'].apply(lambda x: f"{x:.1f}" if x else "N/A")
+    df['vs SMA'] = df['vs_sma'].apply(lambda x: f"{x:+.1f}%")
+    df['Vol Ratio'] = df['volume_ratio'].apply(lambda x: f"{x:.1f}x")
+
+    # Signal with emoji
+    def format_signal(row):
+        sig = row['signal']
+        strength = row['signal_strength']
+        if sig == 'BUY':
+            return f"🟢 BUY ({strength:.0%})"
+        elif sig == 'SELL':
+            return f"🔴 SELL ({strength:.0%})"
+        return "⚪ HOLD"
+
+    df['Signal'] = df.apply(format_signal, axis=1)
+
+    # Owned indicator
+    df['Owned'] = df['owned'].apply(lambda x: "✅" if x else "")
+
+    # Select columns for display
+    display_cols = ['symbol', 'Price', 'Change', 'RSI', 'vs SMA', 'Vol Ratio', 'Signal', 'Owned']
+
+    # Style the dataframe
+    st.dataframe(
+        df[display_cols].rename(columns={'symbol': 'Symbol'}),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            'Symbol': st.column_config.TextColumn('Symbol', width='small'),
+            'Price': st.column_config.TextColumn('Price', width='small'),
+            'Change': st.column_config.TextColumn('Change', width='small'),
+            'RSI': st.column_config.TextColumn('RSI', width='small'),
+            'vs SMA': st.column_config.TextColumn('vs SMA', width='small'),
+            'Vol Ratio': st.column_config.TextColumn('Vol', width='small'),
+            'Signal': st.column_config.TextColumn('Signal', width='medium'),
+            'Owned': st.column_config.TextColumn('', width='small'),
+        }
+    )
+
+
 def render_backtest_selector():
     """Render backtest results selector."""
     st.subheader("Backtest Results")
@@ -545,15 +784,18 @@ def render_sidebar():
         st.subheader("Quick Actions")
 
         if st.button("🔄 Refresh Data"):
-            # Clear sentiment caches to force refresh
-            if 'market_news_cache' in st.session_state:
-                del st.session_state.market_news_cache
-            if 'watchlist_sentiment_cache' in st.session_state:
-                del st.session_state.watchlist_sentiment_cache
-            if 'symbol_sentiment_cache' in st.session_state:
-                del st.session_state.symbol_sentiment_cache
-            if 'symbol_sentiment_symbol' in st.session_state:
-                del st.session_state.symbol_sentiment_symbol
+            # Clear all caches to force refresh
+            caches_to_clear = [
+                'market_news_cache',
+                'watchlist_sentiment_cache',
+                'symbol_sentiment_cache',
+                'symbol_sentiment_symbol',
+                'signals_cache',
+                'watchlist_cache',
+            ]
+            for cache_key in caches_to_clear:
+                if cache_key in st.session_state:
+                    del st.session_state[cache_key]
             st.rerun()
 
         st.divider()
@@ -582,7 +824,12 @@ def main():
 
         st.divider()
 
-        # Equity curve and positions side by side
+        # Risk Monitor - important to show early
+        render_risk_monitor()
+
+        st.divider()
+
+        # Equity curve and metrics side by side
         col1, col2 = st.columns([2, 1])
 
         with col1:
@@ -590,6 +837,22 @@ def main():
 
         with col2:
             render_metrics()
+
+        st.divider()
+
+        # Trading Signals and Live Watchlist
+        col1, col2 = st.columns(2)
+
+        with col1:
+            render_trading_signals()
+
+        with col2:
+            render_live_watchlist()
+
+        st.divider()
+
+        # Strategy Performance breakdown
+        render_strategy_performance()
 
         st.divider()
 
