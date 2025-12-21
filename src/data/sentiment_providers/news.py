@@ -339,5 +339,15 @@ class NewsProvider:
         return results
 
 
-# Global provider instance
-news_provider = NewsProvider()
+# Global provider instance - load API key from settings
+def _create_news_provider() -> NewsProvider:
+    """Create news provider with API key from settings."""
+    try:
+        from config.settings import settings
+        api_key = getattr(settings, 'alpha_vantage_api_key', None)
+        return NewsProvider(api_key=api_key)
+    except Exception:
+        return NewsProvider()
+
+
+news_provider = _create_news_provider()

@@ -77,8 +77,16 @@ class StockTwitsProvider:
             response = requests.get(
                 f"{STOCKTWITS_BASE_URL}/streams/symbol/{symbol}.json",
                 params={"filter": "all"},
+                headers={"User-Agent": "KTrade/1.0"},
                 timeout=10
             )
+
+            if response.status_code == 403:
+                logger.warning("stocktwits_blocked", symbol=symbol)
+                return self._cache.get(symbol, {
+                    'symbol': symbol,
+                    'error': 'API temporarily blocked'
+                })
 
             if response.status_code == 200:
                 data = response.json()
@@ -181,8 +189,17 @@ class StockTwitsProvider:
         try:
             response = requests.get(
                 f"{STOCKTWITS_BASE_URL}/trending/symbols.json",
+                headers={"User-Agent": "KTrade/1.0"},
                 timeout=10
             )
+
+            if response.status_code == 403:
+                # Cloudflare blocking - StockTwits may be rate limiting
+                logger.warning(
+                    "stocktwits_blocked",
+                    message="StockTwits API blocked by Cloudflare. Try again later."
+                )
+                return self._trending_cache
 
             if response.status_code == 200:
                 data = response.json()
@@ -190,11 +207,15 @@ class StockTwitsProvider:
 
                 trending = []
                 for sym in symbols:
-                    trending.append({
-                        'symbol': sym.get('symbol', ''),
-                        'title': sym.get('title', ''),
-                        'watchlist_count': sym.get('watchlist_count', 0),
-                    })
+                    # Filter to stocks only (skip crypto)
+                    instrument_class = sym.get('instrument_class', '')
+                    if instrument_class in ['Stock', 'ExchangeTradedFund', 'DepositoryReceipt']:
+                        trending.append({
+                            'symbol': sym.get('symbol', ''),
+                            'title': sym.get('title', ''),
+                            'watchlist_count': sym.get('watchlist_count', 0),
+                            'trending_score': sym.get('trending_score', 0),
+                        })
 
                 self._trending_cache = trending
                 self._trending_cache_time = datetime.utcnow()

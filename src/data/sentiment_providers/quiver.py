@@ -106,6 +106,14 @@ class QuiverQuantProvider:
 
                 return trending
 
+            elif response.status_code == 401:
+                # Quiver Quant now requires paid API subscription
+                logger.warning(
+                    "quiver_auth_required",
+                    message="Quiver Quant API requires subscription. WSB data disabled."
+                )
+                return []
+
             elif response.status_code == 429:
                 logger.warning("quiver_rate_limited")
                 return self._cache.get('trending', [])

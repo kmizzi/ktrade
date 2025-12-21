@@ -341,7 +341,7 @@ def render_sentiment():
                     hide_index=True
                 )
         else:
-            st.info("WSB data unavailable")
+            st.info("WSB data requires Quiver Quant API subscription")
 
     with col2:
         st.markdown("#### 📱 StockTwits Trending")
@@ -360,7 +360,7 @@ def render_sentiment():
                     hide_index=True
                 )
         else:
-            st.info("StockTwits data unavailable")
+            st.info("StockTwits API temporarily blocked (Cloudflare)")
 
 
 def render_backtest_selector():
