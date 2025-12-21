@@ -28,6 +28,10 @@ from src.dashboard.data_loader import (
     get_stocktwits_trending,
     get_symbol_sentiment,
     get_market_mood,
+    get_news_sentiment,
+    get_news_headlines,
+    get_market_news_sentiment,
+    get_watchlist_news_sentiment,
 )
 
 # Page config
@@ -311,56 +315,116 @@ def render_sentiment():
     """Render sentiment analysis section."""
     st.subheader("Market Sentiment")
 
-    # Market mood
-    mood = get_market_mood()
-    st.markdown(f"### {mood.get('emoji', '❓')} Market Mood: **{mood.get('mood', 'Unknown')}**")
+    # Market mood from news
+    market_news = get_market_news_sentiment()
+    if market_news and 'market_sentiment' in market_news:
+        score = market_news['market_sentiment']
+        if score > 0.15:
+            mood_emoji, mood_text = "🟢", "Bullish"
+        elif score < -0.15:
+            mood_emoji, mood_text = "🔴", "Bearish"
+        else:
+            mood_emoji, mood_text = "🟡", "Neutral"
+        st.markdown(f"### {mood_emoji} News Sentiment: **{mood_text}** ({score:+.2f})")
+        st.caption(f"Based on {market_news.get('article_count', 0)} recent market articles")
+    else:
+        st.markdown("### 📰 News Sentiment")
 
-    # Two columns for WSB and StockTwits
+    st.divider()
+
+    # Two columns - News lookup and Watchlist sentiment
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("#### 🦍 WSB Trending")
-        wsb_trending = get_wsb_trending()
+        st.markdown("#### 🔍 Symbol News Lookup")
 
-        if wsb_trending:
-            wsb_df = pd.DataFrame(wsb_trending)
-            if 'symbol' in wsb_df.columns and 'mentions' in wsb_df.columns:
-                # Format sentiment
-                if 'sentiment' in wsb_df.columns:
-                    wsb_df['Sentiment'] = wsb_df['sentiment'].apply(
-                        lambda x: f"{'🟢' if x > 0.1 else '🔴' if x < -0.1 else '🟡'} {x:.2f}"
-                    )
+        # Symbol input
+        lookup_symbol = st.text_input(
+            "Enter symbol",
+            value="AAPL",
+            max_chars=5,
+            key="news_lookup"
+        ).upper()
 
-                display_cols = ['symbol', 'mentions']
-                if 'Sentiment' in wsb_df.columns:
-                    display_cols.append('Sentiment')
+        if st.button("Get News Sentiment", key="lookup_btn"):
+            with st.spinner(f"Fetching news for {lookup_symbol}..."):
+                sentiment = get_news_sentiment(lookup_symbol)
 
-                st.dataframe(
-                    wsb_df[display_cols].head(10),
-                    use_container_width=True,
-                    hide_index=True
-                )
-        else:
-            st.info("WSB data requires Quiver Quant API subscription")
+                if sentiment and 'error' not in sentiment:
+                    score = sentiment.get('sentiment_score', 0)
+                    label = sentiment.get('sentiment_label', 'Neutral')
+
+                    # Display sentiment score with color
+                    if score > 0.15:
+                        st.success(f"**{lookup_symbol}**: {label} ({score:+.3f})")
+                    elif score < -0.15:
+                        st.error(f"**{lookup_symbol}**: {label} ({score:+.3f})")
+                    else:
+                        st.warning(f"**{lookup_symbol}**: {label} ({score:+.3f})")
+
+                    st.caption(f"Based on {sentiment.get('article_count', 0)} articles")
+
+                    # Show headlines
+                    articles = sentiment.get('articles', [])
+                    if articles:
+                        st.markdown("**Recent Headlines:**")
+                        for article in articles[:5]:
+                            title = article.get('title', 'No title')[:80]
+                            art_score = article.get('sentiment_score', 0)
+                            emoji = "🟢" if art_score > 0.1 else "🔴" if art_score < -0.1 else "🟡"
+                            st.markdown(f"- {emoji} {title}...")
+                else:
+                    st.error(f"Could not fetch news for {lookup_symbol}")
 
     with col2:
-        st.markdown("#### 📱 StockTwits Trending")
-        st_trending = get_stocktwits_trending()
+        st.markdown("#### 📊 Watchlist Sentiment")
 
-        if st_trending:
-            st_df = pd.DataFrame(st_trending)
-            if 'symbol' in st_df.columns:
-                display_cols = ['symbol']
-                if 'watchlist_count' in st_df.columns:
-                    display_cols.append('watchlist_count')
+        watchlist_sentiment = get_watchlist_news_sentiment()
 
-                st.dataframe(
-                    st_df[display_cols].head(10),
-                    use_container_width=True,
-                    hide_index=True
-                )
+        if watchlist_sentiment:
+            df = pd.DataFrame(watchlist_sentiment)
+
+            # Add emoji indicator
+            df['Mood'] = df['sentiment_score'].apply(
+                lambda x: "🟢" if x > 0.15 else "🔴" if x < -0.15 else "🟡"
+            )
+            df['Score'] = df['sentiment_score'].apply(lambda x: f"{x:+.2f}")
+            df['Articles'] = df['article_count']
+
+            st.dataframe(
+                df[['symbol', 'Mood', 'Score', 'Articles']],
+                use_container_width=True,
+                hide_index=True
+            )
         else:
-            st.info("StockTwits API temporarily blocked (Cloudflare)")
+            st.info("Click refresh to load watchlist sentiment")
+
+            if st.button("Load Sentiment", key="load_watchlist"):
+                st.rerun()
+
+    st.divider()
+
+    # Collapsed section for social sentiment (WSB/StockTwits)
+    with st.expander("📱 Social Sentiment (Limited Availability)"):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("**WSB Trending**")
+            wsb_trending = get_wsb_trending()
+            if wsb_trending:
+                wsb_df = pd.DataFrame(wsb_trending)
+                st.dataframe(wsb_df[['symbol', 'mentions']].head(10), hide_index=True)
+            else:
+                st.caption("Requires Quiver Quant subscription")
+
+        with col2:
+            st.markdown("**StockTwits Trending**")
+            st_trending = get_stocktwits_trending()
+            if st_trending:
+                st_df = pd.DataFrame(st_trending)
+                st.dataframe(st_df[['symbol']].head(10), hide_index=True)
+            else:
+                st.caption("API temporarily unavailable")
 
 
 def render_backtest_selector():

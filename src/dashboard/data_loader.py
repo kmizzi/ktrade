@@ -30,7 +30,7 @@ except Exception:
     ALPACA_AVAILABLE = False
 
 try:
-    from src.data.sentiment_providers import sentiment_aggregator, quiver_provider, stocktwits_provider
+    from src.data.sentiment_providers import sentiment_aggregator, quiver_provider, stocktwits_provider, news_provider
     SENTIMENT_AVAILABLE = True
 except Exception:
     SENTIMENT_AVAILABLE = False
@@ -407,3 +407,66 @@ def get_market_mood() -> Dict[str, Any]:
     except Exception as e:
         print(f"Error getting market mood: {e}")
         return {'mood': 'Unknown', 'emoji': '❓'}
+
+
+def get_news_sentiment(symbol: str) -> Dict[str, Any]:
+    """Get news sentiment for a specific symbol."""
+    if not SENTIMENT_AVAILABLE:
+        return {}
+
+    try:
+        return news_provider.get_news_sentiment(symbol)
+    except Exception as e:
+        print(f"Error getting news sentiment for {symbol}: {e}")
+        return {}
+
+
+def get_news_headlines(symbol: str, limit: int = 5) -> List[Dict[str, Any]]:
+    """Get recent news headlines for a symbol."""
+    if not SENTIMENT_AVAILABLE:
+        return []
+
+    try:
+        return news_provider.get_latest_headlines(symbol, limit=limit)
+    except Exception as e:
+        print(f"Error getting headlines for {symbol}: {e}")
+        return []
+
+
+def get_market_news_sentiment() -> Dict[str, Any]:
+    """Get overall market sentiment from news."""
+    if not SENTIMENT_AVAILABLE:
+        return {}
+
+    try:
+        return news_provider.get_market_sentiment()
+    except Exception as e:
+        print(f"Error getting market news sentiment: {e}")
+        return {}
+
+
+def get_watchlist_news_sentiment() -> List[Dict[str, Any]]:
+    """Get news sentiment for watchlist symbols."""
+    if not SENTIMENT_AVAILABLE:
+        return []
+
+    try:
+        # Get symbols from positions or use default watchlist
+        positions = get_positions()
+        symbols = [p['symbol'] for p in positions] if positions else ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'NVDA']
+
+        results = []
+        for symbol in symbols[:5]:  # Limit to 5 to conserve API calls
+            sentiment = news_provider.get_news_sentiment(symbol)
+            if sentiment and 'error' not in sentiment:
+                results.append({
+                    'symbol': symbol,
+                    'sentiment_score': sentiment.get('sentiment_score', 0),
+                    'article_count': sentiment.get('article_count', 0),
+                    'sentiment_label': sentiment.get('sentiment_label', 'Neutral'),
+                })
+
+        return results
+    except Exception as e:
+        print(f"Error getting watchlist news sentiment: {e}")
+        return []
