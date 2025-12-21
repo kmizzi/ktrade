@@ -4,8 +4,9 @@
 
 set -e
 
-# Configuration
-KTRADE_DIR="/Users/kalvin/code/ktrade"
+# Auto-detect directory (works on both Mac and Linux)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KTRADE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOG_DIR="$KTRADE_DIR/logs"
 REPORT_DIR="$LOG_DIR/optimization-reports"
 PROMPT_FILE="$KTRADE_DIR/scripts/bot-optimize-prompt.md"

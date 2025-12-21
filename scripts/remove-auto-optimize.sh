@@ -2,6 +2,10 @@
 # Remove KTrade Auto-Optimizer Cron Schedule
 # Run this script to disable automatic bot optimization
 
+# Auto-detect directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KTRADE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 CRON_ID="# KTRADE-AUTO-OPTIMIZER"
 
 echo "Removing KTrade Auto-Optimizer schedule..."
@@ -16,7 +20,7 @@ echo "The following were removed:"
 echo "  • Daily optimization at market close"
 echo "  • Health check every 6 hours"
 echo ""
-echo "To re-enable: /Users/kalvin/code/ktrade/scripts/setup-auto-optimize.sh"
+echo "To re-enable: $SCRIPT_DIR/setup-auto-optimize.sh"
 echo ""
 
 # Verify removal

@@ -29,19 +29,19 @@ You have FULL AUTONOMY to:
 
 Use this command to send Slack notifications:
 ```bash
-/Users/kalvin/code/ktrade/scripts/send-alert.sh "Subject Here" "Body message here"
+./scripts/send-alert.sh "Subject Here" "Body message here"
 ```
 
 ### Example notifications:
 ```bash
 # Bot restart
-/Users/kalvin/code/ktrade/scripts/send-alert.sh "Bot Restarted" "Trading bot was not running. Restarted successfully."
+./scripts/send-alert.sh "Bot Restarted" "Trading bot was not running. Restarted successfully."
 
 # Improvement made
-/Users/kalvin/code/ktrade/scripts/send-alert.sh "Strategy Tuned" "Adjusted RSI threshold from 70 to 68 based on recent performance."
+./scripts/send-alert.sh "Strategy Tuned" "Adjusted RSI threshold from 70 to 68 based on recent performance."
 
 # Daily summary
-/Users/kalvin/code/ktrade/scripts/send-alert.sh "Daily Summary" "📊 *Performance*\n• Trades: 5\n• Win rate: 60%\n• P&L: +$127.50\n• Best: AAPL +3.2%"
+./scripts/send-alert.sh "Daily Summary" "📊 *Performance*\n• Trades: 5\n• Win rate: 60%\n• P&L: +$127.50\n• Best: AAPL +3.2%"
 ```
 
 ## Daily Optimization Routine
@@ -54,7 +54,7 @@ Use this command to send Slack notifications:
 
 If bot is not running, restart it:
 ```bash
-cd /Users/kalvin/code/ktrade && source venv/bin/activate && nohup python scripts/run_bot.py > logs/bot.log 2>&1 &
+source venv/bin/activate && nohup python scripts/run_bot.py > logs/bot.log 2>&1 &
 ```
 
 ### Phase 2: Performance Analysis
@@ -92,7 +92,7 @@ Based on performance data:
 4. Log what changes were made
 
 ### Phase 5: Report & Notify
-1. Create a summary in `/Users/kalvin/code/ktrade/logs/optimization-reports/YYYY-MM-DD.md`:
+1. Create a summary in `logs/optimization-reports/YYYY-MM-DD.md`:
    - Health status
    - Performance metrics
    - Changes made
@@ -100,12 +100,12 @@ Based on performance data:
 
 2. **ALWAYS send a Slack summary** at the end of each run:
 ```bash
-/Users/kalvin/code/ktrade/scripts/send-alert.sh "Optimization Complete" "📊 *Summary*\n• Health: ✅ OK\n• Changes: [list any changes made]\n• Performance: [key metrics]\n\nFull report: logs/optimization-reports/YYYY-MM-DD.md"
+./scripts/send-alert.sh "Optimization Complete" "📊 *Summary*\n• Health: ✅ OK\n• Changes: [list any changes made]\n• Performance: [key metrics]\n\nFull report: logs/optimization-reports/YYYY-MM-DD.md"
 ```
 
 If no issues and no changes, still send a brief "all clear":
 ```bash
-/Users/kalvin/code/ktrade/scripts/send-alert.sh "Health Check OK" "✅ Bot running normally. No issues found."
+./scripts/send-alert.sh "Health Check OK" "✅ Bot running normally. No issues found."
 ```
 
 ## Important Files

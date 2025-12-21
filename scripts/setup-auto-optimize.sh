@@ -4,7 +4,9 @@
 
 set -e
 
-KTRADE_DIR="/Users/kalvin/code/ktrade"
+# Auto-detect directory (works on both Mac and Linux)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KTRADE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SCRIPTS_DIR="$KTRADE_DIR/scripts"
 CRON_ID="# KTRADE-AUTO-OPTIMIZER"
 
