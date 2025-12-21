@@ -336,8 +336,12 @@ def render_sentiment():
             f"(refreshes ~every {rate_status.get('recommended_interval_minutes', 60)} min)"
         )
 
-    # Market mood from news
-    market_news = get_market_news_sentiment()
+    # Market mood from news - use session state to avoid refetching on every rerun
+    # Only fetch on initial load, not when buttons are clicked
+    if 'market_news_cache' not in st.session_state:
+        st.session_state.market_news_cache = get_market_news_sentiment()
+
+    market_news = st.session_state.market_news_cache
     if market_news and 'market_sentiment' in market_news:
         score = market_news['market_sentiment']
         if score > 0.15:
@@ -359,6 +363,11 @@ def render_sentiment():
     with col1:
         st.markdown("#### 🔍 Symbol News Lookup")
 
+        # Initialize session state for symbol lookup
+        if 'symbol_sentiment_cache' not in st.session_state:
+            st.session_state.symbol_sentiment_cache = None
+            st.session_state.symbol_sentiment_symbol = None
+
         # Symbol input
         lookup_symbol = st.text_input(
             "Enter symbol",
@@ -370,37 +379,49 @@ def render_sentiment():
         if st.button("Get News Sentiment", key="lookup_btn"):
             with st.spinner(f"Fetching news for {lookup_symbol}..."):
                 sentiment = get_news_sentiment(lookup_symbol)
+                st.session_state.symbol_sentiment_cache = sentiment
+                st.session_state.symbol_sentiment_symbol = lookup_symbol
 
-                if sentiment and 'error' not in sentiment:
-                    score = sentiment.get('sentiment_score', 0)
-                    label = sentiment.get('sentiment_label', 'Neutral')
+        # Display cached result
+        if st.session_state.symbol_sentiment_cache and st.session_state.symbol_sentiment_symbol:
+            sentiment = st.session_state.symbol_sentiment_cache
+            symbol = st.session_state.symbol_sentiment_symbol
 
-                    # Display sentiment score with color
-                    if score > 0.15:
-                        st.success(f"**{lookup_symbol}**: {label} ({score:+.3f})")
-                    elif score < -0.15:
-                        st.error(f"**{lookup_symbol}**: {label} ({score:+.3f})")
-                    else:
-                        st.warning(f"**{lookup_symbol}**: {label} ({score:+.3f})")
+            if sentiment and 'error' not in sentiment:
+                score = sentiment.get('sentiment_score', 0)
+                label = sentiment.get('sentiment_label', 'Neutral')
 
-                    st.caption(f"Based on {sentiment.get('article_count', 0)} articles")
-
-                    # Show headlines
-                    articles = sentiment.get('articles', [])
-                    if articles:
-                        st.markdown("**Recent Headlines:**")
-                        for article in articles[:5]:
-                            title = article.get('title', 'No title')[:80]
-                            art_score = article.get('sentiment_score', 0)
-                            emoji = "🟢" if art_score > 0.1 else "🔴" if art_score < -0.1 else "🟡"
-                            st.markdown(f"- {emoji} {title}...")
+                # Display sentiment score with color
+                if score > 0.15:
+                    st.success(f"**{symbol}**: {label} ({score:+.3f})")
+                elif score < -0.15:
+                    st.error(f"**{symbol}**: {label} ({score:+.3f})")
                 else:
-                    st.error(f"Could not fetch news for {lookup_symbol}")
+                    st.warning(f"**{symbol}**: {label} ({score:+.3f})")
+
+                st.caption(f"Based on {sentiment.get('article_count', 0)} articles")
+
+                # Show headlines
+                articles = sentiment.get('articles', [])
+                if articles:
+                    st.markdown("**Recent Headlines:**")
+                    for article in articles[:5]:
+                        title = article.get('title', 'No title')[:80]
+                        art_score = article.get('sentiment_score', 0)
+                        emoji = "🟢" if art_score > 0.1 else "🔴" if art_score < -0.1 else "🟡"
+                        st.markdown(f"- {emoji} {title}...")
+            else:
+                error_msg = sentiment.get('error', 'Unknown error') if sentiment else 'No data'
+                st.error(f"Could not fetch news for {symbol}: {error_msg}")
 
     with col2:
         st.markdown("#### 📊 Watchlist Sentiment")
 
-        watchlist_sentiment = get_watchlist_news_sentiment()
+        # Use cached watchlist sentiment, only fetch on button click
+        if 'watchlist_sentiment_cache' not in st.session_state:
+            st.session_state.watchlist_sentiment_cache = None
+
+        watchlist_sentiment = st.session_state.watchlist_sentiment_cache
 
         if watchlist_sentiment:
             df = pd.DataFrame(watchlist_sentiment)
@@ -418,9 +439,11 @@ def render_sentiment():
                 hide_index=True
             )
         else:
-            st.info("Click refresh to load watchlist sentiment")
+            st.info("Click to load watchlist sentiment")
 
             if st.button("Load Sentiment", key="load_watchlist"):
+                with st.spinner("Fetching watchlist sentiment..."):
+                    st.session_state.watchlist_sentiment_cache = get_watchlist_news_sentiment()
                 st.rerun()
 
     st.divider()
@@ -522,6 +545,15 @@ def render_sidebar():
         st.subheader("Quick Actions")
 
         if st.button("🔄 Refresh Data"):
+            # Clear sentiment caches to force refresh
+            if 'market_news_cache' in st.session_state:
+                del st.session_state.market_news_cache
+            if 'watchlist_sentiment_cache' in st.session_state:
+                del st.session_state.watchlist_sentiment_cache
+            if 'symbol_sentiment_cache' in st.session_state:
+                del st.session_state.symbol_sentiment_cache
+            if 'symbol_sentiment_symbol' in st.session_state:
+                del st.session_state.symbol_sentiment_symbol
             st.rerun()
 
         st.divider()
