@@ -17,10 +17,11 @@ from config.settings import settings
 
 # Try to import database and API modules
 try:
-    from src.db.database import get_db, SessionLocal
-    from src.db.models import Position, Trade
+    from src.database.session import SessionLocal
+    from src.database.models import Position, Trade, Signal, PortfolioSnapshot
     DB_AVAILABLE = True
-except Exception:
+except Exception as e:
+    print(f"Database import failed: {e}")
     DB_AVAILABLE = False
 
 try:

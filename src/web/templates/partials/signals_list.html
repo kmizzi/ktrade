@@ -1,0 +1,32 @@
+{% from "components/signal_badge.html" import render as signal_badge %}
+
+{% if signals %}
+<div class="space-y-2">
+    {% for signal in signals %}
+    <div class="flex items-center justify-between rounded-md border border-border p-3 hover:bg-muted/30 transition-colors">
+        <div class="flex items-center gap-3">
+            <span class="font-medium">{{ signal.symbol }}</span>
+            {{ signal_badge(signal.signal_type, 'small') }}
+            <span class="text-xs text-muted-foreground">{{ signal.strategy }}</span>
+        </div>
+        <div class="text-right">
+            <div class="text-sm">
+                <span class="text-muted-foreground">Confidence:</span>
+                <span class="font-medium">{{ "%.0f"|format(signal.confidence * 100) }}%</span>
+            </div>
+            <div class="text-xs text-muted-foreground">
+                {{ signal.timestamp|truncate(16, True, '') if signal.timestamp else '--' }}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-8 text-muted-foreground">
+    <svg class="mx-auto h-12 w-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+    </svg>
+    <p>No recent signals</p>
+    <p class="text-xs mt-1">Click "Generate" to scan for signals</p>
+</div>
+{% endif %}

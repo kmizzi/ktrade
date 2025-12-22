@@ -1,0 +1,42 @@
+{% macro render(position) %}
+{% set pnl = position.unrealized_pnl|default(0) %}
+{% set pnl_pct = position.unrealized_pnl_pct|default(0) %}
+{% set is_profit = pnl >= 0 %}
+<tr class="hover:bg-muted/30 transition-colors">
+    <td class="px-4 py-3">
+        <div class="flex items-center gap-2">
+            <span class="font-medium">{{ position.symbol }}</span>
+            {% if position.side == 'long' %}
+            <span class="text-xs text-profit">LONG</span>
+            {% else %}
+            <span class="text-xs text-loss">SHORT</span>
+            {% endif %}
+        </div>
+    </td>
+    <td class="px-4 py-3">{{ position.quantity }}</td>
+    <td class="px-4 py-3">${{ "%.2f"|format(position.avg_entry_price|default(0)) }}</td>
+    <td class="px-4 py-3">${{ "%.2f"|format(position.current_price|default(0)) }}</td>
+    <td class="px-4 py-3">${{ "%.2f"|format(position.market_value|default(0)) }}</td>
+    <td class="px-4 py-3 {% if is_profit %}text-profit{% else %}text-loss{% endif %}">
+        <span class="font-medium">
+            {% if is_profit %}+{% endif %}${{ "%.2f"|format(pnl) }}
+        </span>
+        <span class="text-xs ml-1">({% if is_profit %}+{% endif %}{{ "%.2f"|format(pnl_pct) }}%)</span>
+    </td>
+    <td class="px-4 py-3 text-muted-foreground text-sm">
+        {{ position.strategy|default('—') }}
+    </td>
+</tr>
+{% endmacro %}
+
+{% macro skeleton() %}
+<tr>
+    <td class="px-4 py-3"><div class="h-5 w-16 skeleton rounded"></div></td>
+    <td class="px-4 py-3"><div class="h-5 w-12 skeleton rounded"></div></td>
+    <td class="px-4 py-3"><div class="h-5 w-16 skeleton rounded"></div></td>
+    <td class="px-4 py-3"><div class="h-5 w-16 skeleton rounded"></div></td>
+    <td class="px-4 py-3"><div class="h-5 w-20 skeleton rounded"></div></td>
+    <td class="px-4 py-3"><div class="h-5 w-24 skeleton rounded"></div></td>
+    <td class="px-4 py-3"><div class="h-5 w-20 skeleton rounded"></div></td>
+</tr>
+{% endmacro %}

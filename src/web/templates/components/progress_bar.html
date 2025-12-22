@@ -1,0 +1,57 @@
+{% macro render(value, max_value, label=None, show_percentage=True, color='default') %}
+{% set percentage = (value / max_value * 100) if max_value > 0 else 0 %}
+{% set color_classes = {
+    'default': 'bg-primary',
+    'success': 'bg-profit',
+    'danger': 'bg-loss',
+    'warning': 'bg-yellow-500',
+    'auto': 'bg-profit' if percentage <= 70 else ('bg-yellow-500' if percentage <= 90 else 'bg-loss'),
+} %}
+<div class="w-full">
+    {% if label %}
+    <div class="flex justify-between text-sm mb-1">
+        <span class="text-muted-foreground">{{ label }}</span>
+        {% if show_percentage %}
+        <span class="font-medium">{{ "%.1f"|format(percentage) }}%</span>
+        {% endif %}
+    </div>
+    {% endif %}
+    <div class="h-2 w-full rounded-full bg-muted overflow-hidden">
+        <div class="h-full rounded-full transition-all duration-300 {{ color_classes.get(color, color_classes['default']) }}"
+             style="width: {{ [percentage, 100]|min }}%">
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro gauge(value, max_value, label=None, unit='%') %}
+{% set percentage = (value / max_value * 100) if max_value > 0 else 0 %}
+{% set status_color = 'text-profit' if percentage <= 70 else ('text-yellow-500' if percentage <= 90 else 'text-loss') %}
+<div class="flex flex-col items-center">
+    <div class="relative h-24 w-24">
+        <svg class="h-24 w-24 -rotate-90" viewBox="0 0 36 36">
+            <path
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                class="text-muted"
+            />
+            <path
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-dasharray="{{ [percentage, 100]|min }}, 100"
+                class="{{ status_color }}"
+            />
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span class="text-lg font-bold {{ status_color }}">{{ "%.1f"|format(value) }}{{ unit }}</span>
+        </div>
+    </div>
+    {% if label %}
+    <span class="mt-2 text-sm text-muted-foreground">{{ label }}</span>
+    {% endif %}
+</div>
+{% endmacro %}

@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% from "components/metric_card.html" import render as metric_card, skeleton as metric_skeleton %}
+{% from "components/progress_bar.html" import gauge %}
+
+{% block title %}Dashboard - KTrade{% endblock %}
+{% block header %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Portfolio Summary -->
+    <section>
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+             hx-get="/api/v1/portfolio/summary"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML"
+             hx-indicator=".htmx-indicator">
+            <!-- Loading skeletons -->
+            {{ metric_skeleton() }}
+            {{ metric_skeleton() }}
+            {{ metric_skeleton() }}
+            {{ metric_skeleton() }}
+        </div>
+    </section>
+
+    <!-- Risk Gauges -->
+    <section class="grid gap-4 md:grid-cols-3">
+        <div class="rounded-lg border border-border bg-card p-4"
+             hx-get="/api/v1/risk/gauges"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <h3 class="text-sm font-medium text-muted-foreground mb-4">Exposure</h3>
+            <div class="flex justify-center">
+                <div class="h-24 w-24 skeleton rounded-full"></div>
+            </div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4"
+             hx-get="/api/v1/risk/daily-pnl-gauge"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <h3 class="text-sm font-medium text-muted-foreground mb-4">Daily P&L</h3>
+            <div class="flex justify-center">
+                <div class="h-24 w-24 skeleton rounded-full"></div>
+            </div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4"
+             hx-get="/api/v1/risk/position-concentration"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <h3 class="text-sm font-medium text-muted-foreground mb-4">Max Position</h3>
+            <div class="flex justify-center">
+                <div class="h-24 w-24 skeleton rounded-full"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main content grid -->
+    <div class="grid gap-6 lg:grid-cols-2">
+        <!-- Open Positions -->
+        <section class="rounded-lg border border-border bg-card">
+            <div class="border-b border-border p-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold">Open Positions</h2>
+                    <a href="/positions" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
+                </div>
+            </div>
+            <div hx-get="/partials/positions/open"
+                 hx-trigger="load, every 30s"
+                 hx-swap="innerHTML"
+                 class="p-4">
+                <div class="space-y-2">
+                    {% for _ in range(3) %}
+                    <div class="h-12 skeleton rounded"></div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent Signals -->
+        <section class="rounded-lg border border-border bg-card">
+            <div class="border-b border-border p-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold">Recent Signals</h2>
+                    <div class="flex gap-2">
+                        <button
+                            hx-post="/api/v1/signals/generate"
+                            hx-swap="innerHTML"
+                            hx-target="#signals-list"
+                            class="rounded-md bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                            Generate
+                        </button>
+                        <a href="/signals" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
+                    </div>
+                </div>
+            </div>
+            <div id="signals-list"
+                 hx-get="/partials/signals/recent"
+                 hx-trigger="load, every 30s"
+                 hx-swap="innerHTML"
+                 class="p-4">
+                <div class="space-y-2">
+                    {% for _ in range(3) %}
+                    <div class="h-12 skeleton rounded"></div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent Trades -->
+        <section class="rounded-lg border border-border bg-card">
+            <div class="border-b border-border p-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold">Recent Trades</h2>
+                    <a href="/trades" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
+                </div>
+            </div>
+            <div hx-get="/partials/trades/recent"
+                 hx-trigger="load, every 30s"
+                 hx-swap="innerHTML"
+                 class="p-4">
+                <div class="space-y-2">
+                    {% for _ in range(3) %}
+                    <div class="h-12 skeleton rounded"></div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Strategy Performance -->
+        <section class="rounded-lg border border-border bg-card">
+            <div class="border-b border-border p-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold">Strategy Performance</h2>
+                    <a href="/strategies" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
+                </div>
+            </div>
+            <div hx-get="/partials/strategies/summary"
+                 hx-trigger="load"
+                 hx-swap="innerHTML"
+                 class="p-4">
+                <div class="space-y-2">
+                    {% for _ in range(3) %}
+                    <div class="h-12 skeleton rounded"></div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Equity Curve -->
+    <section class="rounded-lg border border-border bg-card">
+        <div class="border-b border-border p-4">
+            <h2 class="text-lg font-semibold">Equity Curve</h2>
+        </div>
+        <div class="p-4">
+            <div class="h-64"
+                 hx-get="/partials/portfolio/equity-chart"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="h-full skeleton rounded"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Watchlist & Market Sentiment -->
+    <div class="grid gap-6 lg:grid-cols-2">
+        <!-- Watchlist -->
+        <section class="rounded-lg border border-border bg-card">
+            <div class="border-b border-border p-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold">Watchlist</h2>
+                    <button
+                        hx-get="/partials/watchlist/data"
+                        hx-target="#watchlist-data"
+                        hx-swap="innerHTML"
+                        class="text-sm text-muted-foreground hover:text-foreground">
+                        Refresh
+                    </button>
+                </div>
+            </div>
+            <div id="watchlist-data"
+                 hx-get="/partials/watchlist/data"
+                 hx-trigger="load, every 60s"
+                 hx-swap="innerHTML"
+                 class="p-4 max-h-80 overflow-y-auto">
+                <div class="space-y-2">
+                    {% for _ in range(5) %}
+                    <div class="h-10 skeleton rounded"></div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Market Sentiment -->
+        <section class="rounded-lg border border-border bg-card">
+            <div class="border-b border-border p-4">
+                <h2 class="text-lg font-semibold">Market Sentiment</h2>
+            </div>
+            <div hx-get="/partials/sentiment/market"
+                 hx-trigger="load"
+                 hx-swap="innerHTML"
+                 class="p-4">
+                <div class="space-y-4">
+                    <div class="h-16 skeleton rounded"></div>
+                    <div class="h-32 skeleton rounded"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

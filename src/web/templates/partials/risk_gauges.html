@@ -1,0 +1,9 @@
+{% from "components/progress_bar.html" import gauge %}
+
+<h3 class="text-sm font-medium text-muted-foreground mb-4">{{ title }}</h3>
+{{ gauge(value, max_value, label, unit) }}
+{% if status_text %}
+<div class="text-center mt-2 text-sm {% if status_ok %}text-profit{% else %}text-loss{% endif %}">
+    {{ status_text }}
+</div>
+{% endif %}

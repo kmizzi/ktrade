@@ -1,0 +1,28 @@
+{% if trades %}
+<div class="space-y-2">
+    {% for trade in trades %}
+    <div class="flex items-center justify-between rounded-md border border-border p-3 hover:bg-muted/30 transition-colors">
+        <div class="flex items-center gap-3">
+            <span class="font-medium">{{ trade.symbol }}</span>
+            <span class="text-xs px-2 py-0.5 rounded {% if trade.side == 'buy' %}bg-profit/20 text-profit{% else %}bg-loss/20 text-loss{% endif %}">
+                {{ trade.side|upper }}
+            </span>
+            <span class="text-sm text-muted-foreground">{{ trade.quantity }} @ ${{ "%.2f"|format(trade.price) }}</span>
+        </div>
+        <div class="text-right">
+            <div class="font-medium">${{ "%.2f"|format(trade.total_value) }}</div>
+            <div class="text-xs text-muted-foreground">
+                {{ trade.filled_at|truncate(16, True, '') if trade.filled_at else '--' }}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-8 text-muted-foreground">
+    <svg class="mx-auto h-12 w-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+    </svg>
+    <p>No recent trades</p>
+</div>
+{% endif %}

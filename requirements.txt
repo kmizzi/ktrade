@@ -50,3 +50,7 @@ mypy>=1.5.0
 black>=23.7.0
 flake8>=6.1.0
 isort>=5.12.0
+fastapi>=0.100.0
+uvicorn>=0.20.0
+jinja2>=3.0.0
+python-multipart>=0.0.5

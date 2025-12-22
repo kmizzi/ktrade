@@ -1,0 +1,55 @@
+{% set sentiment_colors = {
+    'bullish': 'text-profit',
+    'bearish': 'text-loss',
+    'neutral': 'text-muted-foreground',
+    'unknown': 'text-muted-foreground',
+} %}
+
+<div class="space-y-4">
+    <!-- Overall sentiment -->
+    <div class="flex items-center justify-between">
+        <span class="text-muted-foreground">Market Mood</span>
+        <span class="text-lg font-bold {{ sentiment_colors.get(sentiment.sentiment, 'text-muted-foreground') }}">
+            {{ sentiment.sentiment|upper if sentiment.sentiment else 'UNKNOWN' }}
+        </span>
+    </div>
+
+    {% if sentiment.score is defined %}
+    <div>
+        <div class="flex justify-between text-sm mb-1">
+            <span class="text-muted-foreground">Sentiment Score</span>
+            <span>{{ sentiment.score }}</span>
+        </div>
+        <div class="h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-300 {% if sentiment.score > 0 %}bg-profit{% elif sentiment.score < 0 %}bg-loss{% else %}bg-muted-foreground{% endif %}"
+                 style="width: {{ [50 + (sentiment.score * 5), 100]|min }}%"></div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if sentiment.articles_count is defined %}
+    <div class="text-sm text-muted-foreground">
+        Based on {{ sentiment.articles_count }} articles
+    </div>
+    {% endif %}
+
+    {% if sentiment.error %}
+    <div class="text-sm text-loss">
+        Error: {{ sentiment.error }}
+    </div>
+    {% endif %}
+
+    <!-- WSB Trending -->
+    {% if wsb_trending %}
+    <div class="border-t border-border pt-4 mt-4">
+        <h4 class="text-sm font-medium mb-2">WSB Trending</h4>
+        <div class="flex flex-wrap gap-2">
+            {% for stock in wsb_trending[:5] %}
+            <span class="px-2 py-1 text-xs rounded-md bg-muted">
+                {{ stock.symbol if stock.symbol else stock }}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>

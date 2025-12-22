@@ -1,0 +1,17 @@
+{% macro render(signal_type, size='default') %}
+{% set classes = {
+    'BUY': 'bg-profit/20 text-profit border-profit/30',
+    'SELL': 'bg-loss/20 text-loss border-loss/30',
+    'HOLD': 'bg-neutral/20 text-neutral border-neutral/30',
+    'STRONG_BUY': 'bg-profit/30 text-profit border-profit/50',
+    'STRONG_SELL': 'bg-loss/30 text-loss border-loss/50',
+} %}
+{% set size_classes = {
+    'small': 'px-1.5 py-0.5 text-xs',
+    'default': 'px-2 py-1 text-sm',
+    'large': 'px-3 py-1.5 text-base',
+} %}
+<span class="inline-flex items-center rounded-md border font-medium {{ classes.get(signal_type, 'bg-muted text-muted-foreground border-border') }} {{ size_classes.get(size, size_classes['default']) }}">
+    {{ signal_type }}
+</span>
+{% endmacro %}

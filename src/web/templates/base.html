@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}KTrade Dashboard{% endblock %}</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        // shadcn zinc palette for dark mode
+                        background: 'hsl(240 10% 3.9%)',
+                        foreground: 'hsl(0 0% 98%)',
+                        card: 'hsl(240 10% 3.9%)',
+                        'card-foreground': 'hsl(0 0% 98%)',
+                        popover: 'hsl(240 10% 3.9%)',
+                        'popover-foreground': 'hsl(0 0% 98%)',
+                        primary: 'hsl(0 0% 98%)',
+                        'primary-foreground': 'hsl(240 5.9% 10%)',
+                        secondary: 'hsl(240 3.7% 15.9%)',
+                        'secondary-foreground': 'hsl(0 0% 98%)',
+                        muted: 'hsl(240 3.7% 15.9%)',
+                        'muted-foreground': 'hsl(240 5% 64.9%)',
+                        accent: 'hsl(240 3.7% 15.9%)',
+                        'accent-foreground': 'hsl(0 0% 98%)',
+                        destructive: 'hsl(0 62.8% 30.6%)',
+                        'destructive-foreground': 'hsl(0 0% 98%)',
+                        border: 'hsl(240 3.7% 15.9%)',
+                        input: 'hsl(240 3.7% 15.9%)',
+                        ring: 'hsl(240 4.9% 83.9%)',
+                        // Trading colors
+                        profit: 'hsl(142 76% 36%)',
+                        loss: 'hsl(0 84% 60%)',
+                        buy: 'hsl(142 76% 36%)',
+                        sell: 'hsl(0 84% 60%)',
+                        neutral: 'hsl(240 5% 64.9%)',
+                    },
+                    borderRadius: {
+                        lg: '0.5rem',
+                        md: 'calc(0.5rem - 2px)',
+                        sm: 'calc(0.5rem - 4px)',
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            background-color: hsl(240 10% 3.9%);
+            color: hsl(0 0% 98%);
+        }
+
+        /* HTMX loading indicator */
+        .htmx-indicator {
+            opacity: 0;
+            transition: opacity 200ms ease-in;
+        }
+        .htmx-request .htmx-indicator {
+            opacity: 1;
+        }
+        .htmx-request.htmx-indicator {
+            opacity: 1;
+        }
+
+        /* Skeleton loading */
+        .skeleton {
+            animation: skeleton-loading 1s linear infinite alternate;
+        }
+        @keyframes skeleton-loading {
+            0% { background-color: hsl(240 3.7% 15.9%); }
+            100% { background-color: hsl(240 3.7% 20%); }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: hsl(240 10% 3.9%);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: hsl(240 3.7% 15.9%);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: hsl(240 3.7% 25%);
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-background text-foreground antialiased" x-data="{ sidebarOpen: true }">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside
+            class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-card transition-transform duration-300 lg:static"
+            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:w-16'"
+        >
+            <!-- Logo -->
+            <div class="flex h-16 items-center gap-2 border-b border-border px-4">
+                <svg class="h-8 w-8 text-profit" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
+                <span class="text-xl font-bold" x-show="sidebarOpen">KTrade</span>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 space-y-1 p-2">
+                <a href="/" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground {% if request.url.path == '/' %}bg-accent text-accent-foreground{% endif %}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+                    </svg>
+                    <span x-show="sidebarOpen">Dashboard</span>
+                </a>
+
+                <a href="/portfolio" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground {% if '/portfolio' in request.url.path %}bg-accent text-accent-foreground{% endif %}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                    </svg>
+                    <span x-show="sidebarOpen">Portfolio</span>
+                </a>
+
+                <a href="/positions" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground {% if '/positions' in request.url.path %}bg-accent text-accent-foreground{% endif %}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <span x-show="sidebarOpen">Positions</span>
+                </a>
+
+                <a href="/trades" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground {% if '/trades' in request.url.path %}bg-accent text-accent-foreground{% endif %}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                    </svg>
+                    <span x-show="sidebarOpen">Trades</span>
+                </a>
+
+                <a href="/signals" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground {% if '/signals' in request.url.path %}bg-accent text-accent-foreground{% endif %}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <span x-show="sidebarOpen">Signals</span>
+                </a>
+
+                <a href="/strategies" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground {% if '/strategies' in request.url.path %}bg-accent text-accent-foreground{% endif %}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                    <span x-show="sidebarOpen">Strategies</span>
+                </a>
+
+                <a href="/risk" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground {% if '/risk' in request.url.path %}bg-accent text-accent-foreground{% endif %}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <span x-show="sidebarOpen">Risk</span>
+                </a>
+
+                <a href="/watchlist" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground {% if '/watchlist' in request.url.path %}bg-accent text-accent-foreground{% endif %}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                    <span x-show="sidebarOpen">Watchlist</span>
+                </a>
+
+                <a href="/grid" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground {% if '/grid' in request.url.path %}bg-accent text-accent-foreground{% endif %}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                    </svg>
+                    <span x-show="sidebarOpen">Grid Trading</span>
+                </a>
+            </nav>
+
+            <!-- Sidebar footer -->
+            <div class="border-t border-border p-4">
+                <div class="flex items-center gap-3 text-sm text-muted-foreground">
+                    <div class="h-2 w-2 rounded-full bg-profit animate-pulse"></div>
+                    <span x-show="sidebarOpen">Bot Active</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="flex-1 overflow-y-auto">
+            <!-- Top bar -->
+            <header class="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <button
+                    @click="sidebarOpen = !sidebarOpen"
+                    class="rounded-md p-2 hover:bg-accent lg:hidden"
+                >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+
+                <div class="flex-1">
+                    <h1 class="text-lg font-semibold">{% block header %}Dashboard{% endblock %}</h1>
+                </div>
+
+                <!-- Last updated indicator -->
+                <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span id="last-updated">--</span>
+                    <div class="htmx-indicator">
+                        <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page content -->
+            <div class="p-4 lg:p-6">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Update timestamp
+        function updateTimestamp() {
+            const el = document.getElementById('last-updated');
+            if (el) {
+                el.textContent = new Date().toLocaleTimeString();
+            }
+        }
+
+        // Update on HTMX events
+        document.body.addEventListener('htmx:afterSwap', updateTimestamp);
+        document.body.addEventListener('htmx:load', updateTimestamp);
+
+        // Initial timestamp
+        updateTimestamp();
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

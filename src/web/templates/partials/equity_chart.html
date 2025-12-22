@@ -1,0 +1,65 @@
+<canvas id="equity-chart"></canvas>
+<script>
+    const ctx = document.getElementById('equity-chart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ labels | tojson }},
+            datasets: [{
+                label: 'Portfolio Value',
+                data: {{ values | tojson }},
+                borderColor: 'hsl(142 76% 36%)',
+                backgroundColor: 'hsla(142, 76%, 36%, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 0,
+                pointHitRadius: 10,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return '$' + context.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2});
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'hsla(240, 3.7%, 15.9%, 0.5)',
+                    },
+                    ticks: {
+                        color: 'hsl(240, 5%, 64.9%)',
+                        maxTicksLimit: 7
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'hsla(240, 3.7%, 15.9%, 0.5)',
+                    },
+                    ticks: {
+                        color: 'hsl(240, 5%, 64.9%)',
+                        callback: function(value) {
+                            return '$' + value.toLocaleString('en-US');
+                        }
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    });
+</script>

@@ -1,0 +1,29 @@
+{% macro render(title, value, delta=None, delta_type=None, icon=None, subtitle=None) %}
+<div class="rounded-lg border border-border bg-card p-4">
+    <div class="flex items-center justify-between">
+        <span class="text-sm font-medium text-muted-foreground">{{ title }}</span>
+        {% if icon %}
+        <span class="text-muted-foreground">{{ icon | safe }}</span>
+        {% endif %}
+    </div>
+    <div class="mt-2">
+        <span class="text-2xl font-bold">{{ value }}</span>
+        {% if delta is not none %}
+        <span class="ml-2 text-sm {% if delta_type == 'positive' %}text-profit{% elif delta_type == 'negative' %}text-loss{% else %}text-muted-foreground{% endif %}">
+            {% if delta_type == 'positive' %}+{% endif %}{{ delta }}
+        </span>
+        {% endif %}
+    </div>
+    {% if subtitle %}
+    <p class="mt-1 text-xs text-muted-foreground">{{ subtitle }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro skeleton() %}
+<div class="rounded-lg border border-border bg-card p-4">
+    <div class="h-4 w-24 skeleton rounded"></div>
+    <div class="mt-2 h-8 w-32 skeleton rounded"></div>
+    <div class="mt-1 h-3 w-20 skeleton rounded"></div>
+</div>
+{% endmacro %}

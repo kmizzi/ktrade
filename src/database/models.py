@@ -339,3 +339,270 @@ class WsbTrending(Base):
 
     def __repr__(self) -> str:
         return f"<WsbTrending(symbol={self.symbol}, mentions={self.mentions}, rank={self.rank})>"
+
+
+# ============================================================
+# NEW MODELS FOR ENHANCED TRACKING (Dashboard v2)
+# ============================================================
+
+
+class RejectionReason(enum.Enum):
+    """Reasons for signal/order rejection"""
+    INSUFFICIENT_CASH = "insufficient_cash"
+    EXPOSURE_LIMIT = "exposure_limit"
+    POSITION_SIZE_LIMIT = "position_size_limit"
+    DAILY_LOSS_LIMIT = "daily_loss_limit"
+    DUPLICATE_POSITION = "duplicate_position"
+    MARKET_CLOSED = "market_closed"
+    LOW_CONFIDENCE = "low_confidence"
+    RISK_CHECK_FAILED = "risk_check_failed"
+    API_ERROR = "api_error"
+    UNKNOWN = "unknown"
+
+
+class OrderRejection(Base):
+    """
+    Tracks why signals or orders weren't executed.
+    Provides insight into missed opportunities and risk management decisions.
+    """
+    __tablename__ = "order_rejections"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    signal_id = Column(Integer, ForeignKey("signals.id"), nullable=True, index=True)
+    symbol = Column(String(20), nullable=False, index=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    strategy = Column(String(50), nullable=False, index=True)
+
+    # Rejection details
+    rejection_reason = Column(SQLEnum(RejectionReason), nullable=False, index=True)
+    rejection_details = Column(Text, nullable=True)
+
+    # Order details at rejection time
+    requested_side = Column(SQLEnum(TradeSide), nullable=True)
+    requested_quantity = Column(Float, nullable=True)
+    requested_price = Column(Float, nullable=True)
+    signal_confidence = Column(Float, nullable=True)
+
+    # Portfolio state at rejection time
+    portfolio_value = Column(Float, nullable=True)
+    cash_available = Column(Float, nullable=True)
+    current_exposure_pct = Column(Float, nullable=True)
+    position_count = Column(Integer, nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<OrderRejection(symbol={self.symbol}, reason={self.rejection_reason.value}, time={self.timestamp})>"
+
+
+class TrailingStopAction(enum.Enum):
+    """Types of trailing stop actions"""
+    PLACED = "placed"
+    TIGHTENED = "tightened"
+    TRIGGERED = "triggered"
+    CANCELLED = "cancelled"
+    MODIFIED = "modified"
+
+
+class TrailingStopHistory(Base):
+    """
+    Tracks trailing stop adjustments for positions.
+    Provides audit trail of risk management actions.
+    """
+    __tablename__ = "trailing_stop_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    position_id = Column(Integer, ForeignKey("positions.id"), nullable=False, index=True)
+    symbol = Column(String(20), nullable=False, index=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    # Stop price changes
+    old_stop_price = Column(Float, nullable=True)
+    new_stop_price = Column(Float, nullable=False)
+    current_price = Column(Float, nullable=False)
+
+    # Trail percentage changes
+    old_trail_pct = Column(Float, nullable=True)
+    new_trail_pct = Column(Float, nullable=True)
+
+    # Action type
+    action = Column(SQLEnum(TrailingStopAction), nullable=False)
+    trigger_reason = Column(Text, nullable=True)
+
+    # Alpaca order tracking
+    alpaca_order_id = Column(String(100), nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationship
+    position = relationship("Position", backref="trailing_stop_history")
+
+    def __repr__(self) -> str:
+        return f"<TrailingStopHistory(symbol={self.symbol}, action={self.action.value}, stop={self.new_stop_price})>"
+
+
+class RiskCheckType(enum.Enum):
+    """Types of risk checks"""
+    POSITION_OPEN = "position_open"
+    POSITION_SIZE = "position_size"
+    EXPOSURE_CHECK = "exposure_check"
+    DAILY_LOSS_CHECK = "daily_loss_check"
+    CONCENTRATION_CHECK = "concentration_check"
+    STOP_LOSS_CHECK = "stop_loss_check"
+
+
+class RiskCheckResult(enum.Enum):
+    """Results of risk checks"""
+    PASSED = "passed"
+    FAILED = "failed"
+    WARNING = "warning"
+
+
+class RiskCheckLog(Base):
+    """
+    Logs risk manager decisions and checks.
+    Tracks every risk evaluation for audit and analysis.
+    """
+    __tablename__ = "risk_check_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    symbol = Column(String(20), nullable=True, index=True)
+
+    # Check details
+    check_type = Column(SQLEnum(RiskCheckType), nullable=False, index=True)
+    result = Column(SQLEnum(RiskCheckResult), nullable=False, index=True)
+    reason = Column(Text, nullable=True)
+
+    # Portfolio state at check time
+    portfolio_value = Column(Float, nullable=True)
+    cash = Column(Float, nullable=True)
+    current_exposure_pct = Column(Float, nullable=True)
+    position_count = Column(Integer, nullable=True)
+
+    # Request details (for position-related checks)
+    requested_quantity = Column(Float, nullable=True)
+    requested_price = Column(Float, nullable=True)
+    requested_value = Column(Float, nullable=True)
+
+    # Thresholds at check time
+    max_exposure_pct = Column(Float, nullable=True)
+    max_position_size_pct = Column(Float, nullable=True)
+    daily_loss_limit_pct = Column(Float, nullable=True)
+
+    # Strategy context
+    strategy = Column(String(50), nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<RiskCheckLog(type={self.check_type.value}, result={self.result.value}, symbol={self.symbol})>"
+
+
+class GridOrderType(enum.Enum):
+    """Grid order types"""
+    BUY = "buy"
+    SELL = "sell"
+
+
+class GridOrderStatus(enum.Enum):
+    """Grid order status"""
+    PENDING = "pending"
+    PLACED = "placed"
+    FILLED = "filled"
+    CANCELLED = "cancelled"
+    FAILED = "failed"
+
+
+class GridOrderExecution(Base):
+    """
+    Tracks grid trading order executions.
+    Replaces JSON file persistence with database storage.
+    """
+    __tablename__ = "grid_order_executions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(20), nullable=False, index=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    # Grid configuration
+    grid_level = Column(Integer, nullable=False)
+    grid_spacing_pct = Column(Float, nullable=True)
+    grid_quantity = Column(Float, nullable=True)
+
+    # Order details
+    order_type = Column(SQLEnum(GridOrderType), nullable=False)
+    order_status = Column(SQLEnum(GridOrderStatus), nullable=False, index=True)
+    limit_price = Column(Float, nullable=False)
+    quantity = Column(Float, nullable=False)
+
+    # Execution details
+    filled_price = Column(Float, nullable=True)
+    filled_quantity = Column(Float, nullable=True)
+    filled_at = Column(DateTime, nullable=True)
+
+    # Profit tracking
+    realized_profit = Column(Float, nullable=True)
+    cumulative_profit = Column(Float, nullable=True)
+
+    # Alpaca integration
+    alpaca_order_id = Column(String(100), nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<GridOrderExecution(symbol={self.symbol}, level={self.grid_level}, type={self.order_type.value}, status={self.order_status.value})>"
+
+
+class StrategyPerformance(Base):
+    """
+    Daily per-strategy performance metrics.
+    Aggregates performance data for strategy comparison.
+    """
+    __tablename__ = "strategy_performance"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    strategy = Column(String(50), nullable=False, index=True)
+    date = Column(DateTime, nullable=False, index=True)
+
+    # Trade counts
+    total_trades = Column(Integer, default=0)
+    win_count = Column(Integer, default=0)
+    loss_count = Column(Integer, default=0)
+
+    # Derived metrics
+    win_rate = Column(Float, nullable=True)
+
+    # P&L
+    realized_pnl = Column(Float, default=0.0)
+    unrealized_pnl = Column(Float, default=0.0)
+    total_pnl = Column(Float, default=0.0)
+
+    # Signal metrics
+    signals_generated = Column(Integer, default=0)
+    signals_executed = Column(Integer, default=0)
+    signals_rejected = Column(Integer, default=0)
+    execution_rate = Column(Float, nullable=True)
+
+    # Risk metrics
+    avg_position_size = Column(Float, nullable=True)
+    max_drawdown_pct = Column(Float, nullable=True)
+    sharpe_ratio = Column(Float, nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Unique constraint on strategy + date
+    __table_args__ = (
+        # Ensures one record per strategy per day
+        # Index("ix_strategy_date", "strategy", "date", unique=True),
+    )
+
+    def __repr__(self) -> str:
+        return f"<StrategyPerformance(strategy={self.strategy}, date={self.date}, win_rate={self.win_rate}, pnl={self.total_pnl})>"

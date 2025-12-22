@@ -1,0 +1,24 @@
+{% if watchlist %}
+<div class="space-y-1">
+    {% for item in watchlist %}
+    <div class="flex items-center justify-between rounded-md px-2 py-2 hover:bg-muted/30 transition-colors {% if item.error %}opacity-50{% endif %}">
+        <div class="flex items-center gap-2">
+            <span class="font-medium w-16">{{ item.symbol }}</span>
+            <span class="text-sm">${{ "%.2f"|format(item.price) }}</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-sm {% if item.change >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                {% if item.change >= 0 %}+{% endif %}${{ "%.2f"|format(item.change) }}
+            </span>
+            <span class="text-sm w-16 text-right {% if item.change_pct >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                {% if item.change_pct >= 0 %}+{% endif %}{{ "%.2f"|format(item.change_pct) }}%
+            </span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-8 text-muted-foreground">
+    <p>No watchlist items</p>
+</div>
+{% endif %}
