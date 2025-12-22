@@ -1,8 +1,8 @@
 #!/bin/bash
 # Check KTrade status on VPS (run from local machine)
 
-VPS_HOST="karb"
-REMOTE_DIR="/root/code/ktrade"
+VPS_HOST="ktrade"
+REMOTE_DIR="/home/ktrade/ktrade"
 
 echo "=== KTrade VPS Status ==="
 echo ""
@@ -12,7 +12,7 @@ ssh $VPS_HOST "ps aux | grep run_bot.py | grep -v grep || echo '  (not running)'
 echo ""
 
 echo "Cron schedule:"
-ssh $VPS_HOST "crontab -l 2>/dev/null | grep KTRADE || echo '  (no schedule)'"
+ssh $VPS_HOST "sudo -u ktrade crontab -l 2>/dev/null | grep KTRADE || echo '  (no schedule)'"
 echo ""
 
 echo "Recent log:"

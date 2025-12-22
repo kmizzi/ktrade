@@ -144,7 +144,7 @@ class AlpacaClient:
         symbol: str,
         qty: float,
         side: str,
-        time_in_force: str = "day"
+        time_in_force: str = "auto"
     ) -> Dict[str, Any]:
         """
         Place a market order.
@@ -153,14 +153,19 @@ class AlpacaClient:
             symbol: Stock or crypto symbol
             qty: Quantity to buy/sell
             side: 'buy' or 'sell'
-            time_in_force: Order time in force (default: 'day')
+            time_in_force: Order time in force (default: 'auto' - GTC for crypto, DAY for stocks)
 
         Returns:
             Order details
         """
         try:
             order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-            tif = TimeInForce.DAY if time_in_force.lower() == "day" else TimeInForce.GTC
+            # Crypto symbols contain "/" and require GTC
+            is_crypto = "/" in symbol
+            if time_in_force.lower() == "auto":
+                tif = TimeInForce.GTC if is_crypto else TimeInForce.DAY
+            else:
+                tif = TimeInForce.GTC if time_in_force.lower() == "gtc" else TimeInForce.DAY
 
             request = MarketOrderRequest(
                 symbol=symbol,
