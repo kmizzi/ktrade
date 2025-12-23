@@ -3,6 +3,7 @@ Market service for fetching watchlist and market data.
 """
 
 from typing import Dict, List, Any, Optional
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from src.api.alpaca_client import alpaca_client
@@ -38,8 +39,10 @@ class MarketService:
 
         for symbol in symbols:
             try:
-                # Get latest bar
-                bars = alpaca_client.get_bars(symbol, timeframe="1Day", limit=2)
+                # Get latest bars - must specify date range for crypto
+                end = datetime.utcnow()
+                start = end - timedelta(days=7)
+                bars = alpaca_client.get_bars(symbol, timeframe="1Day", start=start, end=end, limit=2)
                 if bars and len(bars) >= 1:
                     latest = bars[-1]
                     prev = bars[-2] if len(bars) >= 2 else None
@@ -77,7 +80,9 @@ class MarketService:
     def get_symbol_detail(self, symbol: str) -> Dict[str, Any]:
         """Get detailed data for a single symbol."""
         try:
-            bars = alpaca_client.get_bars(symbol, timeframe="1Day", limit=50)
+            end = datetime.utcnow()
+            start = end - timedelta(days=60)
+            bars = alpaca_client.get_bars(symbol, timeframe="1Day", start=start, end=end, limit=50)
             if not bars:
                 return {"symbol": symbol, "error": "No data"}
 
@@ -103,7 +108,15 @@ class MarketService:
     def get_bars(self, symbol: str, timeframe: str = "1Day", limit: int = 100) -> List[Dict[str, Any]]:
         """Get price bars for a symbol."""
         try:
-            bars = alpaca_client.get_bars(symbol, timeframe=timeframe, limit=limit)
+            end = datetime.utcnow()
+            # Determine start date based on timeframe
+            if timeframe == "1Min":
+                start = end - timedelta(hours=limit // 60 + 2)
+            elif timeframe == "1Hour":
+                start = end - timedelta(hours=limit + 24)
+            else:  # 1Day
+                start = end - timedelta(days=limit + 10)
+            bars = alpaca_client.get_bars(symbol, timeframe=timeframe, start=start, end=end, limit=limit)
             return [
                 {
                     "timestamp": b.get("timestamp"),
