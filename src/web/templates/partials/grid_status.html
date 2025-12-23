@@ -37,16 +37,39 @@
             {% if prices and prices.get(grid.symbol) %}
             {% set current = prices.get(grid.symbol, 0) %}
             {% set pct_diff = ((current - grid.center_price) / grid.center_price * 100) if grid.center_price > 0 else 0 %}
-            <div class="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
+            {% set abs_diff = pct_diff if pct_diff >= 0 else -pct_diff %}
+
+            <!-- Warning if grid center is significantly off from current price -->
+            {% if abs_diff > 10 %}
+            <div class="flex items-start gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 mb-3">
+                <svg class="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <div class="flex-1">
+                    <div class="font-medium text-amber-600">Grid Center Appears Stale</div>
+                    <p class="text-xs text-amber-600/80 mt-0.5">
+                        Current price (${{ "{:,.0f}".format(current) }}) is {{ "%.0f"|format(abs_diff) }}% {% if pct_diff < 0 %}below{% else %}above{% endif %} grid center (${{ "{:,.0f}".format(grid.center_price) }}).
+                        {% if abs_diff > 15 %}
+                        This exceeds the 15% boundary threshold - grid should auto-stop.
+                        {% else %}
+                        This exceeds the 10% recenter threshold - grid should auto-recenter.
+                        {% endif %}
+                        Check if the trading bot is running.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="flex items-center justify-between p-3 rounded-lg {% if abs_diff > 10 %}bg-amber-500/5 border border-amber-500/20{% else %}bg-primary/5 border border-primary/20{% endif %}">
                 <div class="flex items-center gap-2">
-                    <svg class="h-4 w-4 text-primary" fill="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-4 w-4 {% if abs_diff > 10 %}text-amber-500{% else %}text-primary{% endif %}" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                     </svg>
                     <span class="text-sm font-medium">Current Price</span>
                 </div>
                 <div class="flex items-baseline gap-2">
                     <span class="text-lg font-bold">${{ "{:,.2f}".format(current) }}</span>
-                    <span class="text-sm {% if pct_diff >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                    <span class="text-sm {% if abs_diff > 10 %}text-amber-600{% elif pct_diff >= 0 %}text-profit{% else %}text-loss{% endif %}">
                         ({% if pct_diff >= 0 %}+{% endif %}{{ "%.1f"|format(pct_diff) }}% from center)
                     </span>
                 </div>

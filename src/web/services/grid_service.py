@@ -199,9 +199,15 @@ class GridService:
             if not symbol:
                 continue
             try:
-                quote = alpaca_client.get_latest_quote(symbol)
-                if quote:
-                    prices[symbol] = float(quote.get("ask_price") or quote.get("price", 0))
+                # Use get_bars for crypto symbols (contains '/') since get_latest_quote only works for stocks
+                if "/" in symbol:
+                    bars = alpaca_client.get_bars(symbol, timeframe="1Min", limit=1)
+                    if bars:
+                        prices[symbol] = float(bars[-1].get("close", 0))
+                else:
+                    quote = alpaca_client.get_latest_quote(symbol)
+                    if quote:
+                        prices[symbol] = float(quote.get("ask_price") or quote.get("price", 0))
             except Exception:
                 prices[symbol] = 0
 
