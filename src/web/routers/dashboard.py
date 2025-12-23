@@ -389,7 +389,4 @@ async def watchlist_page(request: Request):
     return templates.TemplateResponse("pages/watchlist.html", {"request": request})
 
 
-@router.get("/grid", response_class=HTMLResponse)
-async def grid_page(request: Request):
-    """Render grid trading page."""
-    return templates.TemplateResponse("pages/grid.html", {"request": request})
+# Grid page moved to grid.py router
