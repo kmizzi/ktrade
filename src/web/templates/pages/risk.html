@@ -5,25 +5,121 @@
 
 {% block content %}
 <div class="space-y-6">
-    <div class="grid gap-4 md:grid-cols-3">
-        <div class="rounded-lg border border-border bg-card p-4"
-             hx-get="/api/v1/risk/gauges"
+    <!-- Risk Gauges -->
+    <section>
+        <div class="grid gap-4 md:grid-cols-3">
+            <div class="rounded-lg border border-border bg-card p-4"
+                 hx-get="/api/v1/risk/gauges"
+                 hx-trigger="load, every 30s"
+                 hx-swap="innerHTML">
+                <div class="h-32 skeleton rounded"></div>
+            </div>
+            <div class="rounded-lg border border-border bg-card p-4"
+                 hx-get="/api/v1/risk/daily-pnl-gauge"
+                 hx-trigger="load, every 30s"
+                 hx-swap="innerHTML">
+                <div class="h-32 skeleton rounded"></div>
+            </div>
+            <div class="rounded-lg border border-border bg-card p-4"
+                 hx-get="/api/v1/risk/position-concentration"
+                 hx-trigger="load, every 30s"
+                 hx-swap="innerHTML">
+                <div class="h-32 skeleton rounded"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Risk Settings & Limits -->
+    <section class="rounded-lg border border-border bg-card p-4">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Active Risk Limits</h2>
+            <span class="text-xs text-muted-foreground">Configured in settings</span>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+             hx-get="/partials/risk/limits"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            {% for _ in range(4) %}
+            <div class="p-3 rounded-lg bg-muted/30 border border-border">
+                <div class="h-4 w-24 skeleton rounded mb-2"></div>
+                <div class="h-6 w-16 skeleton rounded"></div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Position Breakdown -->
+    <section class="rounded-lg border border-border bg-card overflow-hidden">
+        <div class="border-b border-border p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">Position Breakdown</h2>
+                    <p class="text-xs text-muted-foreground">Portfolio allocation by position</p>
+                </div>
+                <button
+                    hx-get="/partials/risk/positions"
+                    hx-target="#risk-positions-container"
+                    hx-swap="innerHTML"
+                    class="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+        <div id="risk-positions-container"
+             hx-get="/partials/risk/positions"
              hx-trigger="load, every 30s"
              hx-swap="innerHTML">
-            <div class="h-32 skeleton rounded"></div>
+            <div class="p-4 space-y-2">
+                {% for _ in range(5) %}
+                <div class="h-10 skeleton rounded"></div>
+                {% endfor %}
+            </div>
         </div>
-        <div class="rounded-lg border border-border bg-card p-4"
-             hx-get="/api/v1/risk/daily-pnl-gauge"
-             hx-trigger="load, every 30s"
-             hx-swap="innerHTML">
-            <div class="h-32 skeleton rounded"></div>
+    </section>
+
+    <!-- Risk Information -->
+    <section class="rounded-lg border border-blue-200 bg-blue-50/50 p-4" x-data="{ expanded: false }">
+        <div class="flex items-start gap-3">
+            <svg class="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="flex-1">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-blue-900">Understanding Risk Limits</h3>
+                    <button @click="expanded = !expanded" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                        <span x-text="expanded ? 'Hide' : 'Learn more'"></span>
+                        <svg class="h-4 w-4 transition-transform" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="text-sm text-blue-800 mt-1">
+                    Risk limits protect your portfolio from excessive losses by automatically blocking trades that would exceed thresholds.
+                </p>
+
+                <div x-show="expanded" x-collapse class="mt-4 grid md:grid-cols-2 gap-4 text-sm text-blue-900">
+                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                        <strong>Exposure Limit</strong>
+                        <p class="text-blue-700 mt-1">Maximum percentage of portfolio that can be invested at once. Keeps cash reserve for opportunities or safety.</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                        <strong>Daily Loss Limit</strong>
+                        <p class="text-blue-700 mt-1">Maximum loss allowed in a single day before trading is paused. Prevents catastrophic single-day losses.</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                        <strong>Position Size Limit</strong>
+                        <p class="text-blue-700 mt-1">Maximum percentage any single position can be. Prevents overconcentration in one asset.</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                        <strong>Trade Size Limit</strong>
+                        <p class="text-blue-700 mt-1">Maximum size for any single trade. Limits impact of individual order execution.</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="rounded-lg border border-border bg-card p-4"
-             hx-get="/api/v1/risk/position-concentration"
-             hx-trigger="load, every 30s"
-             hx-swap="innerHTML">
-            <div class="h-32 skeleton rounded"></div>
-        </div>
-    </div>
+    </section>
 </div>
 {% endblock %}

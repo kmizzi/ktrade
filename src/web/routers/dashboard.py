@@ -447,6 +447,46 @@ async def risk_position_gauge(request: Request, db: Session = Depends(get_db_ses
         )
 
 
+@router.get("/partials/risk/limits", response_class=HTMLResponse)
+async def risk_limits_partial(request: Request, db: Session = Depends(get_db_session)):
+    """Get risk limits partial for HTMX."""
+    try:
+        service = RiskService(db)
+        limits = service.get_limits()
+        return templates.TemplateResponse(
+            "partials/risk_limits.html",
+            {"request": request, "limits": limits}
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "partials/error.html",
+            {"request": request, "error": str(e)}
+        )
+
+
+@router.get("/partials/risk/positions", response_class=HTMLResponse)
+async def risk_positions_partial(request: Request, db: Session = Depends(get_db_session)):
+    """Get position breakdown partial for HTMX."""
+    try:
+        service = RiskService(db)
+        data = service.get_positions_breakdown()
+        return templates.TemplateResponse(
+            "partials/risk_positions.html",
+            {
+                "request": request,
+                "positions": data.get("positions", []),
+                "cash_value": data.get("cash_value", 0),
+                "cash_pct": data.get("cash_pct", 0),
+                "limits": data.get("limits", {}),
+            }
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "partials/error.html",
+            {"request": request, "error": str(e)}
+        )
+
+
 # Page routes for navigation
 @router.get("/portfolio", response_class=HTMLResponse)
 async def portfolio_page(request: Request):

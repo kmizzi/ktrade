@@ -1,0 +1,27 @@
+<!-- Max Exposure -->
+<div class="p-3 rounded-lg bg-muted/30 border border-border">
+    <div class="text-xs text-muted-foreground mb-1">Max Exposure</div>
+    <div class="text-lg font-bold">{{ limits.max_exposure_pct }}%</div>
+    <div class="text-xs text-muted-foreground">of portfolio</div>
+</div>
+
+<!-- Daily Loss Limit -->
+<div class="p-3 rounded-lg bg-muted/30 border border-border">
+    <div class="text-xs text-muted-foreground mb-1">Daily Loss Limit</div>
+    <div class="text-lg font-bold">{{ limits.daily_loss_limit_pct }}%</div>
+    <div class="text-xs text-muted-foreground">max daily loss</div>
+</div>
+
+<!-- Max Position Size -->
+<div class="p-3 rounded-lg bg-muted/30 border border-border">
+    <div class="text-xs text-muted-foreground mb-1">Max Position</div>
+    <div class="text-lg font-bold">{{ limits.max_position_pct }}%</div>
+    <div class="text-xs text-muted-foreground">per position</div>
+</div>
+
+<!-- Min Cash Reserve -->
+<div class="p-3 rounded-lg bg-muted/30 border border-border">
+    <div class="text-xs text-muted-foreground mb-1">Min Cash Reserve</div>
+    <div class="text-lg font-bold">${{ "{:,.0f}".format(limits.min_cash_reserve) }}</div>
+    <div class="text-xs text-muted-foreground">always available</div>
+</div>

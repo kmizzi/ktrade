@@ -1,0 +1,58 @@
+{% if positions %}
+<div class="divide-y divide-border">
+    {% for pos in positions %}
+    <div class="p-4 hover:bg-muted/30 transition-colors">
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-3">
+                <span class="font-medium">{{ pos.symbol }}</span>
+                <span class="text-xs text-muted-foreground">${{ "{:,.2f}".format(pos.value) }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-medium {% if pos.pct > limits.max_position_pct %}text-loss{% else %}text-foreground{% endif %}">
+                    {{ "%.1f"|format(pos.pct) }}%
+                </span>
+                {% if pos.pct > limits.max_position_pct %}
+                <span class="text-xs bg-loss/10 text-loss px-1.5 py-0.5 rounded">Over limit</span>
+                {% elif pos.pct > limits.max_position_pct * 0.8 %}
+                <span class="text-xs bg-yellow-500/10 text-yellow-600 px-1.5 py-0.5 rounded">Near limit</span>
+                {% endif %}
+            </div>
+        </div>
+        <!-- Allocation bar -->
+        <div class="h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-300
+                        {% if pos.pct > limits.max_position_pct %}bg-loss{% elif pos.pct > limits.max_position_pct * 0.8 %}bg-yellow-500{% else %}bg-primary{% endif %}"
+                 style="width: {{ (pos.pct / limits.max_position_pct * 100)|min(100) }}%"></div>
+        </div>
+        <div class="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>0%</span>
+            <span>{{ limits.max_position_pct }}% limit</span>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Cash position -->
+    {% if cash_pct is defined %}
+    <div class="p-4 bg-muted/20">
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-3">
+                <span class="font-medium text-muted-foreground">Cash</span>
+                <span class="text-xs text-muted-foreground">${{ "{:,.2f}".format(cash_value) }}</span>
+            </div>
+            <span class="text-sm font-medium">{{ "%.1f"|format(cash_pct) }}%</span>
+        </div>
+        <div class="h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div class="h-full rounded-full bg-profit/50" style="width: {{ cash_pct }}%"></div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="text-center py-8 text-muted-foreground">
+    <svg class="mx-auto h-12 w-12 mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+    </svg>
+    <p class="font-medium">No positions</p>
+    <p class="text-sm mt-1">Position allocation will appear here when trades are executed</p>
+</div>
+{% endif %}

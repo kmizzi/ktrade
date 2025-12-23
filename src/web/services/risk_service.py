@@ -72,11 +72,46 @@ class RiskService:
     def get_limits(self) -> Dict[str, Any]:
         """Get current risk limits from settings."""
         return {
-            "max_position_size_pct": settings.max_position_size_pct,
-            "max_portfolio_exposure_pct": settings.max_portfolio_exposure_pct,
+            "max_exposure_pct": settings.max_portfolio_exposure_pct,
+            "max_position_pct": settings.max_position_size_pct,
             "daily_loss_limit_pct": settings.daily_loss_limit_pct,
-            "default_stop_loss_pct": settings.default_stop_loss_pct,
+            "min_cash_reserve": getattr(settings, 'min_cash_reserve', 1000),
         }
+
+    def get_positions_breakdown(self) -> Dict[str, Any]:
+        """Get position breakdown with allocation percentages."""
+        try:
+            account = alpaca_client.get_account()
+            positions = alpaca_client.get_positions()
+
+            portfolio_value = float(account.get("equity", 0))
+            cash = float(account.get("cash", 0))
+
+            # Calculate cash percentage
+            cash_pct = (cash / portfolio_value * 100) if portfolio_value > 0 else 0
+
+            # Build position list with percentages
+            pos_list = []
+            for p in positions:
+                value = float(p.get("market_value", 0))
+                pct = (value / portfolio_value * 100) if portfolio_value > 0 else 0
+                pos_list.append({
+                    "symbol": p.get("symbol"),
+                    "value": value,
+                    "pct": round(pct, 1),
+                })
+
+            # Sort by percentage descending
+            pos_list.sort(key=lambda x: x["pct"], reverse=True)
+
+            return {
+                "positions": pos_list,
+                "cash_value": cash,
+                "cash_pct": round(cash_pct, 1),
+                "limits": self.get_limits(),
+            }
+        except Exception as e:
+            return {"positions": [], "error": str(e), "limits": self.get_limits()}
 
     def get_check_history(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Get risk check history from database."""
