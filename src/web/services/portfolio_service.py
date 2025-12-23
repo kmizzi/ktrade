@@ -169,6 +169,29 @@ class PortfolioService:
         except Exception as e:
             return {"error": str(e)}
 
+    def get_positions_summary(self) -> Dict[str, Any]:
+        """Get summary statistics for open positions."""
+        positions = self.get_open_positions()
+
+        total_positions = len(positions)
+        total_value = sum(p.get("market_value", 0) for p in positions)
+        day_pnl = sum(p.get("day_pnl", 0) for p in positions)
+        total_pnl = sum(p.get("pnl", 0) for p in positions)
+
+        # Calculate percentages based on total value
+        cost_basis = total_value - total_pnl
+        day_pnl_pct = (day_pnl / cost_basis * 100) if cost_basis > 0 else 0
+        total_pnl_pct = (total_pnl / cost_basis * 100) if cost_basis > 0 else 0
+
+        return {
+            "total_positions": total_positions,
+            "total_value": total_value,
+            "day_pnl": day_pnl,
+            "day_pnl_pct": day_pnl_pct,
+            "total_pnl": total_pnl,
+            "total_pnl_pct": total_pnl_pct,
+        }
+
     def get_open_positions(self) -> List[Dict[str, Any]]:
         """Get current open positions with live prices."""
         try:

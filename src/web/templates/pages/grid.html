@@ -212,18 +212,109 @@
     <!-- Order History -->
     <section class="rounded-lg border border-border bg-card">
         <div class="border-b border-border p-4">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h2 class="text-lg font-semibold">Order History</h2>
                     <p class="text-xs text-muted-foreground">Completed grid orders with profit/loss for each trade</p>
                 </div>
+
+                <!-- Filter Controls -->
+                <div class="flex flex-wrap items-center gap-2"
+                     x-data="{
+                         symbol: '',
+                         order_type: '',
+                         status: '',
+                         sort: 'time_desc',
+                         buildUrl() {
+                             const params = new URLSearchParams();
+                             if (this.symbol) params.set('symbol', this.symbol);
+                             if (this.order_type) params.set('order_type', this.order_type);
+                             if (this.status) params.set('status', this.status);
+                             if (this.sort) params.set('sort', this.sort);
+                             return '/partials/grid/orders?' + params.toString();
+                         },
+                         refresh() {
+                             htmx.ajax('GET', this.buildUrl(), '#grid-orders-container');
+                         }
+                     }">
+                    <!-- Symbol Filter -->
+                    <div class="relative">
+                        <select x-model="symbol"
+                                @change="refresh()"
+                                class="appearance-none pl-3 pr-8 py-1.5 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer">
+                            <option value="">All Symbols</option>
+                            {% for sym in config.symbols %}
+                            <option value="{{ sym }}">{{ sym }}</option>
+                            {% endfor %}
+                        </select>
+                        <svg class="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+
+                    <!-- Type Filter -->
+                    <div class="relative">
+                        <select x-model="order_type"
+                                @change="refresh()"
+                                class="appearance-none pl-3 pr-8 py-1.5 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer">
+                            <option value="">All Types</option>
+                            <option value="buy">Buy</option>
+                            <option value="sell">Sell</option>
+                        </select>
+                        <svg class="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div class="relative">
+                        <select x-model="status"
+                                @change="refresh()"
+                                class="appearance-none pl-3 pr-8 py-1.5 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer">
+                            <option value="">All Status</option>
+                            <option value="filled">Filled</option>
+                            <option value="pending">Pending</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                        <svg class="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+
+                    <!-- Sort Dropdown -->
+                    <div class="relative">
+                        <select x-model="sort"
+                                @change="refresh()"
+                                class="appearance-none pl-3 pr-8 py-1.5 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer">
+                            <option value="time_desc">Newest</option>
+                            <option value="time_asc">Oldest</option>
+                            <option value="profit_desc">Highest Profit</option>
+                            <option value="profit_asc">Lowest Profit</option>
+                            <option value="level_asc">Level (Low to High)</option>
+                            <option value="level_desc">Level (High to Low)</option>
+                        </select>
+                        <svg class="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+
+                    <!-- Reset Button -->
+                    <button type="button"
+                            @click="symbol = ''; order_type = ''; status = ''; sort = 'time_desc'; refresh()"
+                            class="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
+                            title="Reset filters">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
-        <div hx-get="/partials/grid/orders"
+        <div id="grid-orders-container"
+             hx-get="/partials/grid/orders"
              hx-trigger="load, every 60s"
-             hx-swap="innerHTML"
-             class="p-4">
-            <div class="space-y-2">
+             hx-swap="innerHTML">
+            <div class="p-4 space-y-2">
                 {% for _ in range(5) %}
                 <div class="h-12 skeleton rounded"></div>
                 {% endfor %}

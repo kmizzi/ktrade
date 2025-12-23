@@ -152,13 +152,34 @@ async def grid_detail_partial(
 async def grid_orders_partial(
     request: Request,
     symbol: Optional[str] = None,
-    limit: int = 20,
+    order_type: Optional[str] = None,
+    status: Optional[str] = None,
+    sort: Optional[str] = None,
+    limit: int = Query(50, le=100),
     db: Session = Depends(get_db_session)
 ):
-    """Get grid order history partial for HTMX."""
+    """Get grid order history partial for HTMX with filtering."""
     service = GridService(db)
-    orders = service.get_order_history(symbol=symbol, limit=limit)
+    orders = service.get_order_history(
+        symbol=symbol,
+        order_type=order_type,
+        status=status,
+        sort=sort,
+        limit=limit
+    )
+    symbols = service.get_unique_symbols()
+    current_filters = {
+        "symbol": symbol,
+        "order_type": order_type,
+        "status": status,
+        "sort": sort or "time_desc"
+    }
     return get_templates().TemplateResponse(
         "partials/grid_orders.html",
-        {"request": request, "orders": orders}
+        {
+            "request": request,
+            "orders": orders,
+            "symbols": symbols,
+            "current_filters": current_filters
+        }
     )

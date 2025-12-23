@@ -121,17 +121,40 @@ class GridService:
     def get_order_history(
         self,
         symbol: Optional[str] = None,
+        order_type: Optional[str] = None,
+        status: Optional[str] = None,
+        sort: Optional[str] = None,
         limit: int = 50
     ) -> List[Dict[str, Any]]:
-        """Get grid order execution history from database."""
+        """Get grid order execution history from database with filtering."""
+        from sqlalchemy import asc
+
         query = self.db.query(GridOrderExecution)
 
+        # Apply filters
         if symbol:
             query = query.filter(GridOrderExecution.symbol == symbol)
+        if order_type:
+            query = query.filter(GridOrderExecution.order_type == GridOrderType(order_type))
+        if status:
+            query = query.filter(GridOrderExecution.order_status == GridOrderStatus(status))
+
+        # Apply sorting
+        sort_map = {
+            "time_desc": desc(GridOrderExecution.timestamp),
+            "time_asc": asc(GridOrderExecution.timestamp),
+            "profit_desc": desc(GridOrderExecution.realized_profit),
+            "profit_asc": asc(GridOrderExecution.realized_profit),
+            "price_desc": desc(GridOrderExecution.filled_price),
+            "price_asc": asc(GridOrderExecution.filled_price),
+            "level_asc": asc(GridOrderExecution.grid_level),
+            "level_desc": desc(GridOrderExecution.grid_level),
+        }
+        order_by = sort_map.get(sort, desc(GridOrderExecution.timestamp))
 
         orders = (
             query
-            .order_by(desc(GridOrderExecution.timestamp))
+            .order_by(order_by)
             .limit(limit)
             .all()
         )
@@ -154,6 +177,17 @@ class GridService:
             }
             for o in orders
         ]
+
+    def get_unique_symbols(self) -> List[str]:
+        """Get list of unique grid symbols."""
+        symbols = (
+            self.db.query(GridOrderExecution.symbol)
+            .distinct()
+            .filter(GridOrderExecution.symbol.isnot(None))
+            .order_by(GridOrderExecution.symbol)
+            .all()
+        )
+        return [s[0] for s in symbols]
 
     def get_profit_history(
         self,

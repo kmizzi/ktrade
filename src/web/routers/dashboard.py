@@ -114,14 +114,68 @@ async def market_status(request: Request):
 
 # HTMX Partials for dashboard
 @router.get("/partials/positions/open", response_class=HTMLResponse)
-async def positions_partial(request: Request, db: Session = Depends(get_db_session)):
-    """Get open positions partial for HTMX."""
+async def positions_partial(
+    request: Request,
+    db: Session = Depends(get_db_session),
+    q: Optional[str] = None,
+    pnl_filter: Optional[str] = None,
+    sort: Optional[str] = None,
+):
+    """Get open positions partial for HTMX with filtering."""
     try:
         service = PortfolioService(db)
         positions = service.get_open_positions()
+
+        # Apply search filter
+        if q:
+            q_lower = q.lower()
+            positions = [p for p in positions if q_lower in p.get("symbol", "").lower()]
+
+        # Apply P&L filter
+        if pnl_filter == "profit":
+            positions = [p for p in positions if p.get("pnl", 0) >= 0]
+        elif pnl_filter == "loss":
+            positions = [p for p in positions if p.get("pnl", 0) < 0]
+
+        # Apply sorting
+        sort_funcs = {
+            "pnl_desc": lambda x: x.get("pnl", 0),
+            "pnl_asc": lambda x: -x.get("pnl", 0),
+            "pnl_pct_desc": lambda x: x.get("pnl_pct", 0),
+            "pnl_pct_asc": lambda x: -x.get("pnl_pct", 0),
+            "value_desc": lambda x: x.get("market_value", 0),
+            "value_asc": lambda x: -x.get("market_value", 0),
+            "symbol_asc": lambda x: x.get("symbol", ""),
+        }
+        if sort and sort in sort_funcs:
+            reverse = not sort.endswith("_asc") or sort == "symbol_asc"
+            if sort == "symbol_asc":
+                positions = sorted(positions, key=sort_funcs[sort])
+            else:
+                positions = sorted(positions, key=sort_funcs[sort], reverse=reverse)
+
+        current_filters = {"q": q, "pnl_filter": pnl_filter, "sort": sort or "pnl_desc"}
+
         return templates.TemplateResponse(
             "partials/positions_list.html",
-            {"request": request, "positions": positions}
+            {"request": request, "positions": positions, "current_filters": current_filters}
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "partials/error.html",
+            {"request": request, "error": str(e)}
+        )
+
+
+@router.get("/partials/positions/summary", response_class=HTMLResponse)
+async def positions_summary_partial(request: Request, db: Session = Depends(get_db_session)):
+    """Get positions summary partial for HTMX."""
+    try:
+        service = PortfolioService(db)
+        summary = service.get_positions_summary()
+        return templates.TemplateResponse(
+            "partials/positions_summary.html",
+            {"request": request, "summary": summary}
         )
     except Exception as e:
         return templates.TemplateResponse(

@@ -95,6 +95,25 @@
             </tr>
             {% endfor %}
         </tbody>
+        <!-- Summary Footer -->
+        <tfoot class="border-t-2 border-border bg-muted/30">
+            {% set buy_orders = orders|selectattr('order_type', 'equalto', 'buy')|list %}
+            {% set sell_orders = orders|selectattr('order_type', 'equalto', 'sell')|list %}
+            {% set total_profit = orders|map(attribute='realized_profit')|select('ne', none)|sum %}
+            <tr class="text-sm font-medium">
+                <td class="py-3" colspan="2">
+                    {{ orders|length }} order{% if orders|length != 1 %}s{% endif %}
+                    <span class="text-muted-foreground font-normal ml-2">
+                        ({{ buy_orders|length }} buys, {{ sell_orders|length }} sells)
+                    </span>
+                </td>
+                <td class="py-3" colspan="3"></td>
+                <td class="py-3 text-right {% if total_profit >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                    {% if total_profit >= 0 %}+{% endif %}${{ "%.2f"|format(total_profit) }}
+                </td>
+                <td class="py-3" colspan="2"></td>
+            </tr>
+        </tfoot>
     </table>
 </div>
 {% else %}
@@ -103,6 +122,12 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
     </svg>
     <p>No order history</p>
-    <p class="text-xs mt-1">Grid orders will appear here once they are placed.</p>
+    <p class="text-xs mt-1">
+        {% if current_filters and (current_filters.symbol or current_filters.order_type or current_filters.status) %}
+        Try adjusting your filters
+        {% else %}
+        Grid orders will appear here once they are placed
+        {% endif %}
+    </p>
 </div>
 {% endif %}

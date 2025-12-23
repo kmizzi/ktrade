@@ -1,0 +1,37 @@
+<!-- Total Positions -->
+<div class="rounded-lg border border-border bg-card p-4">
+    <div class="text-sm text-muted-foreground">Total Positions</div>
+    <div class="text-2xl font-bold mt-1">{{ summary.total_positions }}</div>
+</div>
+
+<!-- Total Value -->
+<div class="rounded-lg border border-border bg-card p-4">
+    <div class="text-sm text-muted-foreground">Total Value</div>
+    <div class="text-2xl font-bold mt-1">${{ "{:,.2f}".format(summary.total_value) }}</div>
+</div>
+
+<!-- Today's P&L -->
+<div class="rounded-lg border border-border bg-card p-4">
+    <div class="text-sm text-muted-foreground">Today's P&L</div>
+    <div class="text-2xl font-bold mt-1 {% if summary.day_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+        {% if summary.day_pnl >= 0 %}+{% endif %}${{ "{:,.2f}".format(summary.day_pnl) }}
+    </div>
+    {% if summary.day_pnl_pct is defined %}
+    <div class="text-xs {% if summary.day_pnl >= 0 %}text-profit{% else %}text-loss{% endif %} mt-0.5">
+        {% if summary.day_pnl_pct >= 0 %}+{% endif %}{{ "%.2f"|format(summary.day_pnl_pct) }}%
+    </div>
+    {% endif %}
+</div>
+
+<!-- Total P&L -->
+<div class="rounded-lg border border-border bg-card p-4">
+    <div class="text-sm text-muted-foreground">Total P&L</div>
+    <div class="text-2xl font-bold mt-1 {% if summary.total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+        {% if summary.total_pnl >= 0 %}+{% endif %}${{ "{:,.2f}".format(summary.total_pnl) }}
+    </div>
+    {% if summary.total_pnl_pct is defined %}
+    <div class="text-xs {% if summary.total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %} mt-0.5">
+        {% if summary.total_pnl_pct >= 0 %}+{% endif %}{{ "%.2f"|format(summary.total_pnl_pct) }}%
+    </div>
+    {% endif %}
+</div>
