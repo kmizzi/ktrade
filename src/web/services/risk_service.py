@@ -39,15 +39,19 @@ class RiskService:
             # Check position concentration
             max_position_pct = 0
             max_position_symbol = None
+            max_position_value = 0
             for p in positions:
-                pos_pct = (float(p.get("market_value", 0)) / portfolio_value * 100) if portfolio_value > 0 else 0
+                pos_value = float(p.get("market_value", 0))
+                pos_pct = (pos_value / portfolio_value * 100) if portfolio_value > 0 else 0
                 if pos_pct > max_position_pct:
                     max_position_pct = pos_pct
                     max_position_symbol = p.get("symbol")
+                    max_position_value = pos_value
 
             return {
                 "portfolio_value": portfolio_value,
                 "cash": cash,
+                "positions_value": positions_value,
                 "daily_pnl": daily_pnl,
                 "daily_pnl_pct": round(daily_pnl_pct, 2),
                 "daily_loss_limit_pct": settings.daily_loss_limit_pct,
@@ -57,6 +61,7 @@ class RiskService:
                 "exposure_ok": exposure_pct <= settings.max_portfolio_exposure_pct,
                 "max_position_pct": round(max_position_pct, 1),
                 "max_position_symbol": max_position_symbol,
+                "max_position_value": max_position_value,
                 "max_position_limit_pct": settings.max_position_size_pct,
                 "position_concentration_ok": max_position_pct <= settings.max_position_size_pct,
                 "position_count": len(positions),

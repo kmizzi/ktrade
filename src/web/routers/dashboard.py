@@ -260,17 +260,19 @@ async def risk_exposure_gauge(request: Request, db: Session = Depends(get_db_ses
     try:
         service = RiskService(db)
         metrics = service.get_current_metrics()
+        exposure_pct = metrics.get("exposure_pct", 0)
+        exposure_value = metrics.get("positions_value", 0)
         return templates.TemplateResponse(
             "partials/risk_gauges.html",
             {
                 "request": request,
                 "title": "Exposure",
-                "value": metrics.get("exposure_pct", 0),
+                "value": exposure_pct,
                 "max_value": metrics.get("max_exposure_pct", 100),
-                "label": f"{metrics.get('exposure_pct', 0):.1f}% / {metrics.get('max_exposure_pct', 100)}%",
+                "label": f"{exposure_pct:.1f}% / {metrics.get('max_exposure_pct', 100)}%",
                 "unit": "%",
                 "status_ok": metrics.get("exposure_ok", True),
-                "status_text": "Within limits" if metrics.get("exposure_ok") else "Over limit"
+                "status_text": f"${exposure_value:,.0f} invested"
             }
         )
     except Exception as e:
@@ -286,8 +288,15 @@ async def risk_daily_pnl_gauge(request: Request, db: Session = Depends(get_db_se
     try:
         service = RiskService(db)
         metrics = service.get_current_metrics()
-        daily_loss_pct = abs(metrics.get("daily_pnl_pct", 0))
+        daily_pnl_pct = metrics.get("daily_pnl_pct", 0)
         limit = metrics.get("daily_loss_limit_pct", 5)
+
+        # Only show loss if day is negative, otherwise show 0
+        daily_loss_pct = abs(daily_pnl_pct) if daily_pnl_pct < 0 else 0
+
+        # Get dollar P&L for context
+        daily_pnl_dollar = metrics.get("daily_pnl", 0)
+
         return templates.TemplateResponse(
             "partials/risk_gauges.html",
             {
@@ -298,7 +307,7 @@ async def risk_daily_pnl_gauge(request: Request, db: Session = Depends(get_db_se
                 "label": f"{daily_loss_pct:.2f}% / {limit}%",
                 "unit": "%",
                 "status_ok": metrics.get("daily_loss_ok", True),
-                "status_text": "OK" if metrics.get("daily_loss_ok") else "Limit reached"
+                "status_text": f"${daily_pnl_dollar:+,.0f} today" if daily_pnl_pct >= 0 else "Limit reached" if not metrics.get("daily_loss_ok") else f"${daily_pnl_dollar:,.0f} loss"
             }
         )
     except Exception as e:
@@ -314,17 +323,20 @@ async def risk_position_gauge(request: Request, db: Session = Depends(get_db_ses
     try:
         service = RiskService(db)
         metrics = service.get_current_metrics()
+        max_pos_value = metrics.get("max_position_value", 0)
+        max_pos_pct = metrics.get("max_position_pct", 0)
+        max_pos_symbol = metrics.get("max_position_symbol") or "None"
         return templates.TemplateResponse(
             "partials/risk_gauges.html",
             {
                 "request": request,
                 "title": "Max Position",
-                "value": metrics.get("max_position_pct", 0),
+                "value": max_pos_pct,
                 "max_value": metrics.get("max_position_limit_pct", 20),
-                "label": metrics.get("max_position_symbol") or "None",
+                "label": max_pos_symbol,
                 "unit": "%",
                 "status_ok": metrics.get("position_concentration_ok", True),
-                "status_text": f"{metrics.get('max_position_pct', 0):.1f}%"
+                "status_text": f"${max_pos_value:,.0f} ({max_pos_pct:.1f}%)"
             }
         )
     except Exception as e:

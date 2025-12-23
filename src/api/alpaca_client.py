@@ -21,6 +21,7 @@ from alpaca.trading.enums import OrderSide, TimeInForce, QueryOrderStatus, Order
 from alpaca.data.historical import StockHistoricalDataClient, CryptoHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest, CryptoBarsRequest, StockLatestQuoteRequest
 from alpaca.data.timeframe import TimeFrame
+from alpaca.data.enums import DataFeed
 from alpaca.common.exceptions import APIError
 import structlog
 from functools import wraps
@@ -693,7 +694,8 @@ class AlpacaClient:
                     timeframe=tf,
                     start=start,
                     end=end,
-                    limit=limit
+                    limit=limit,
+                    feed=DataFeed.IEX  # Use IEX for free tier compatibility
                 )
                 bars = self.stock_data_client.get_stock_bars(request)
 
