@@ -101,10 +101,11 @@ class PortfolioService:
     def get_equity_curve(self) -> Dict[str, Any]:
         """Get equity curve data for charting."""
         try:
+            # Only get snapshots with actual portfolio value (> $100)
             snapshots = (
                 self.db.query(PortfolioSnapshot)
+                .filter(PortfolioSnapshot.total_value > 100)
                 .order_by(PortfolioSnapshot.timestamp)
-                .limit(365)
                 .all()
             )
 
