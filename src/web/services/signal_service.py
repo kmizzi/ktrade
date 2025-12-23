@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 
 from src.database.models import Signal, SignalType
+from src.api.alpaca_client import alpaca_client
+from config.settings import settings
 
 
 class SignalService:
@@ -61,6 +63,18 @@ class SignalService:
             from src.strategies.simple_momentum import SimpleMomentumStrategy
             from src.strategies.technical_breakout import TechnicalBreakoutStrategy
 
+            # Get symbols to analyze from watchlist
+            symbols = settings.get_full_watchlist()
+            if not symbols:
+                return []
+
+            # Get currently owned symbols from Alpaca
+            try:
+                positions = alpaca_client.get_positions()
+                owned_symbols = [p.get("symbol") for p in positions if p.get("symbol")]
+            except Exception:
+                owned_symbols = []
+
             signals = []
 
             # Generate signals from each strategy
@@ -73,7 +87,10 @@ class SignalService:
                 if not strategy.enabled:
                     continue
                 try:
-                    strategy_signals = strategy.generate_signals()
+                    strategy_signals = strategy.generate_signals(
+                        symbols=symbols,
+                        owned_symbols=owned_symbols
+                    )
                     for signal in strategy_signals:
                         # Save to database
                         db_signal = Signal(
