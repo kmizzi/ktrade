@@ -45,11 +45,14 @@ def backfill_portfolio_history(trading_client, db):
     print("\n=== Backfilling Portfolio History ===")
 
     try:
-        # Get portfolio history
-        history = trading_client.get_portfolio_history(
+        from alpaca.trading.requests import GetPortfolioHistoryRequest
+
+        # Get portfolio history (up to 1 year)
+        request = GetPortfolioHistoryRequest(
             period="1Y",
             timeframe="1D"
         )
+        history = trading_client.get_portfolio_history(request)
 
         # Check if we got data
         if history.timestamp is None or len(history.timestamp) == 0:
