@@ -96,7 +96,29 @@ class TradeService:
     def get_strategy_performance(self) -> List[Dict[str, Any]]:
         """Get performance metrics for all strategies."""
         strategies = self.get_strategies()
-        return [self.get_strategy_metrics(s) for s in strategies]
+
+        # Map confusing strategy names to clearer labels
+        name_map = {
+            "synced": "Imported",
+            "unknown": "Manual Trades",
+            "": "Uncategorized",
+            None: "Uncategorized",
+        }
+
+        results = []
+        for s in strategies:
+            metrics = self.get_strategy_metrics(s)
+            # Skip strategies with 0 trades (nothing useful to show)
+            if metrics["total_trades"] == 0:
+                continue
+            # Rename confusing strategy names
+            if metrics["strategy"] in name_map:
+                metrics["strategy"] = name_map[metrics["strategy"]]
+            results.append(metrics)
+
+        # Sort by total trades (most active first)
+        results.sort(key=lambda x: x["total_trades"], reverse=True)
+        return results
 
     def get_strategy_metrics(self, strategy_name: str) -> Dict[str, Any]:
         """Get performance metrics for a single strategy."""

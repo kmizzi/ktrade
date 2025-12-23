@@ -27,9 +27,13 @@
     </div>
     {% endif %}
 
-    {% if sentiment.articles_count is defined %}
+    {% if sentiment.articles_count is defined and sentiment.articles_count > 0 %}
     <div class="text-sm text-muted-foreground">
-        Based on {{ sentiment.articles_count }} articles
+        Based on {{ sentiment.articles_count }} Reddit mentions
+    </div>
+    {% elif sentiment.message %}
+    <div class="text-sm text-muted-foreground">
+        {{ sentiment.message }}
     </div>
     {% endif %}
 
