@@ -1,0 +1,29 @@
+{% from "components/metric_card.html" import render as metric_card %}
+
+{{ metric_card(
+    title="Active Grids",
+    value=summary.active_grids,
+    subtitle=summary.total_grids ~ " total configured",
+    icon="grid"
+) }}
+
+{{ metric_card(
+    title="Total Invested",
+    value="${:,.2f}".format(summary.total_invested),
+    subtitle="Across all grids",
+    icon="wallet"
+) }}
+
+{{ metric_card(
+    title="Realized Profit",
+    value="${:,.2f}".format(summary.realized_profit),
+    delta_type="positive" if summary.realized_profit >= 0 else "negative",
+    icon="trending"
+) }}
+
+{{ metric_card(
+    title="Open Orders",
+    value=summary.total_open_orders,
+    subtitle="Buy & sell orders",
+    icon="orders"
+) }}

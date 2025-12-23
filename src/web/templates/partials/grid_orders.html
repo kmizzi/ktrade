@@ -1,0 +1,108 @@
+{% if orders %}
+<div class="overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-border text-left">
+                <th class="pb-3 font-medium text-muted-foreground">Symbol</th>
+                <th class="pb-3 font-medium text-muted-foreground">Type</th>
+                <th class="pb-3 font-medium text-muted-foreground">Level</th>
+                <th class="pb-3 font-medium text-muted-foreground text-right">Price</th>
+                <th class="pb-3 font-medium text-muted-foreground text-right">Qty</th>
+                <th class="pb-3 font-medium text-muted-foreground text-right">Profit</th>
+                <th class="pb-3 font-medium text-muted-foreground">Status</th>
+                <th class="pb-3 font-medium text-muted-foreground text-right">Time</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+            {% for order in orders %}
+            <tr class="hover:bg-muted/30 transition-colors">
+                <td class="py-3 font-medium">{{ order.symbol }}</td>
+                <td class="py-3">
+                    {% if order.order_type == 'buy' %}
+                    <span class="inline-flex items-center rounded bg-profit/10 text-profit px-1.5 py-0.5 text-xs font-medium">
+                        BUY
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded bg-loss/10 text-loss px-1.5 py-0.5 text-xs font-medium">
+                        SELL
+                    </span>
+                    {% endif %}
+                </td>
+                <td class="py-3 text-muted-foreground">
+                    {% if order.grid_level < 0 %}B{{ order.grid_level|abs }}{% else %}S{{ order.grid_level }}{% endif %}
+                </td>
+                <td class="py-3 text-right">
+                    {% if order.filled_price %}
+                    ${{ "%.2f"|format(order.filled_price) }}
+                    {% elif order.limit_price %}
+                    ${{ "%.2f"|format(order.limit_price) }}
+                    {% else %}
+                    --
+                    {% endif %}
+                </td>
+                <td class="py-3 text-right">
+                    {% if order.filled_quantity %}
+                    {{ "%.4f"|format(order.filled_quantity) if order.filled_quantity < 1 else "%.2f"|format(order.filled_quantity) }}
+                    {% elif order.quantity %}
+                    {{ "%.4f"|format(order.quantity) if order.quantity < 1 else "%.2f"|format(order.quantity) }}
+                    {% else %}
+                    --
+                    {% endif %}
+                </td>
+                <td class="py-3 text-right">
+                    {% if order.realized_profit is not none %}
+                    <span class="{% if order.realized_profit >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                        {% if order.realized_profit >= 0 %}+{% endif %}${{ "%.2f"|format(order.realized_profit) }}
+                    </span>
+                    {% else %}
+                    <span class="text-muted-foreground">--</span>
+                    {% endif %}
+                </td>
+                <td class="py-3">
+                    {% if order.order_status == 'filled' %}
+                    <span class="inline-flex items-center gap-1 text-profit text-xs">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Filled
+                    </span>
+                    {% elif order.order_status == 'placed' or order.order_status == 'pending' %}
+                    <span class="inline-flex items-center gap-1 text-muted-foreground text-xs">
+                        <span class="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
+                        {{ order.order_status|capitalize }}
+                    </span>
+                    {% elif order.order_status == 'cancelled' %}
+                    <span class="inline-flex items-center text-muted-foreground text-xs">
+                        Cancelled
+                    </span>
+                    {% elif order.order_status == 'failed' %}
+                    <span class="inline-flex items-center text-loss text-xs">
+                        Failed
+                    </span>
+                    {% else %}
+                    <span class="text-muted-foreground text-xs">{{ order.order_status or '--' }}</span>
+                    {% endif %}
+                </td>
+                <td class="py-3 text-right text-muted-foreground text-xs">
+                    {% if order.filled_at %}
+                    {{ order.filled_at|friendly_time }}
+                    {% elif order.timestamp %}
+                    {{ order.timestamp|friendly_time }}
+                    {% else %}
+                    --
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-8 text-muted-foreground">
+    <svg class="mx-auto h-12 w-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+    </svg>
+    <p>No order history</p>
+    <p class="text-xs mt-1">Grid orders will appear here once they are placed.</p>
+</div>
+{% endif %}

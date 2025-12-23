@@ -1,12 +1,105 @@
 {% extends "base.html" %}
+{% from "components/metric_card.html" import render as metric_card, skeleton as metric_skeleton %}
 
 {% block title %}Grid Trading - KTrade{% endblock %}
 {% block header %}Grid Trading{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
-    <div class="rounded-lg border border-border bg-card p-6">
-        <p class="text-muted-foreground">Grid trading interface coming soon.</p>
-    </div>
+    <!-- Summary Cards -->
+    <section>
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+             hx-get="/partials/grid/summary"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            {{ metric_skeleton() }}
+            {{ metric_skeleton() }}
+            {{ metric_skeleton() }}
+            {{ metric_skeleton() }}
+        </div>
+    </section>
+
+    <!-- Configuration Banner -->
+    <section class="rounded-lg border border-border bg-card p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h3 class="font-medium">Grid Configuration</h3>
+                <p class="text-sm text-muted-foreground">
+                    {{ config.num_levels }} levels &bull; {{ config.spacing_pct }}% spacing &bull; {{ config.allocation_pct }}% portfolio allocation
+                </p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-muted-foreground">Symbols:</span>
+                    {% for symbol in config.symbols %}
+                    <span class="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium">
+                        {{ symbol }}
+                    </span>
+                    {% endfor %}
+                </div>
+                <div class="flex items-center gap-2">
+                    {% if config.enabled %}
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-profit/10 text-profit px-2.5 py-1 text-xs font-medium">
+                        <span class="h-1.5 w-1.5 rounded-full bg-profit animate-pulse"></span>
+                        Enabled
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-muted text-muted-foreground px-2.5 py-1 text-xs font-medium">
+                        <span class="h-1.5 w-1.5 rounded-full bg-muted-foreground"></span>
+                        Disabled
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Grid Status Cards -->
+    <section>
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Active Grids</h2>
+            <button
+                hx-get="/partials/grid/status"
+                hx-target="#grid-status-container"
+                hx-swap="innerHTML"
+                class="text-sm text-muted-foreground hover:text-foreground">
+                Refresh
+            </button>
+        </div>
+        <div id="grid-status-container"
+             hx-get="/partials/grid/status"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <div class="grid gap-4 md:grid-cols-2">
+                {% for _ in range(2) %}
+                <div class="rounded-lg border border-border bg-card p-6">
+                    <div class="h-64 skeleton rounded"></div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Order History -->
+    <section class="rounded-lg border border-border bg-card">
+        <div class="border-b border-border p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">Order History</h2>
+                    <p class="text-xs text-muted-foreground">Recent grid order executions</p>
+                </div>
+            </div>
+        </div>
+        <div hx-get="/partials/grid/orders"
+             hx-trigger="load, every 60s"
+             hx-swap="innerHTML"
+             class="p-4">
+            <div class="space-y-2">
+                {% for _ in range(5) %}
+                <div class="h-12 skeleton rounded"></div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
 </div>
 {% endblock %}

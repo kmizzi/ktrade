@@ -44,7 +44,8 @@ def create_app() -> FastAPI:
     app.include_router(risk.router, prefix="/api/v1/risk", tags=["Risk"])
     app.include_router(watchlist.router, prefix="/api/v1/watchlist", tags=["Watchlist"])
     app.include_router(sentiment.router, prefix="/api/v1/sentiment", tags=["Sentiment"])
-    app.include_router(grid.router, prefix="/api/v1/grid", tags=["Grid Trading"])
+    # Grid router has both page (/grid) and API routes (/api/v1/grid/*)
+    app.include_router(grid.router, tags=["Grid Trading"])
 
     return app
 
