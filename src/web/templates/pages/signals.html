@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Signals - KTrade{% endblock %}
+{% block header %}Trading Signals{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-end">
+        <button hx-post="/api/v1/signals/generate"
+                hx-target="#signals-container"
+                hx-swap="innerHTML"
+                class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            Generate Signals
+        </button>
+    </div>
+
+    <div id="signals-container" class="rounded-lg border border-border bg-card p-6"
+         hx-get="/partials/signals/recent"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        <div class="space-y-2">
+            {% for _ in range(10) %}
+            <div class="h-12 skeleton rounded"></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

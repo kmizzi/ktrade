@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Trades - KTrade{% endblock %}
+{% block header %}Trade History{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="rounded-lg border border-border bg-card"
+         hx-get="/partials/trades/recent"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        <div class="p-6">
+            <div class="space-y-2">
+                {% for _ in range(10) %}
+                <div class="h-12 skeleton rounded"></div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

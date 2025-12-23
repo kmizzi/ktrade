@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Risk - KTrade{% endblock %}
+{% block header %}Risk Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="grid gap-4 md:grid-cols-3">
+        <div class="rounded-lg border border-border bg-card p-4"
+             hx-get="/api/v1/risk/gauges"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <div class="h-32 skeleton rounded"></div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4"
+             hx-get="/api/v1/risk/daily-pnl-gauge"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <div class="h-32 skeleton rounded"></div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4"
+             hx-get="/api/v1/risk/position-concentration"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <div class="h-32 skeleton rounded"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

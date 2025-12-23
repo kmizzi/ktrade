@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Positions - KTrade{% endblock %}
+{% block header %}Positions{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="rounded-lg border border-border bg-card p-6"
+         hx-get="/partials/positions/open"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML">
+        <div class="space-y-2">
+            {% for _ in range(5) %}
+            <div class="h-12 skeleton rounded"></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

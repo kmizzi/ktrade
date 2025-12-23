@@ -304,3 +304,52 @@ async def risk_position_gauge(request: Request, db: Session = Depends(get_db_ses
             "partials/error.html",
             {"request": request, "error": str(e)}
         )
+
+
+# Page routes for navigation
+@router.get("/portfolio", response_class=HTMLResponse)
+async def portfolio_page(request: Request):
+    """Render portfolio page."""
+    return templates.TemplateResponse("pages/portfolio.html", {"request": request})
+
+
+@router.get("/positions", response_class=HTMLResponse)
+async def positions_page(request: Request):
+    """Render positions page."""
+    return templates.TemplateResponse("pages/positions.html", {"request": request})
+
+
+@router.get("/trades", response_class=HTMLResponse)
+async def trades_page(request: Request):
+    """Render trades page."""
+    return templates.TemplateResponse("pages/trades.html", {"request": request})
+
+
+@router.get("/signals", response_class=HTMLResponse)
+async def signals_page(request: Request):
+    """Render signals page."""
+    return templates.TemplateResponse("pages/signals.html", {"request": request})
+
+
+@router.get("/strategies", response_class=HTMLResponse)
+async def strategies_page(request: Request):
+    """Render strategies page."""
+    return templates.TemplateResponse("pages/strategies.html", {"request": request})
+
+
+@router.get("/risk", response_class=HTMLResponse)
+async def risk_page(request: Request):
+    """Render risk page."""
+    return templates.TemplateResponse("pages/risk.html", {"request": request})
+
+
+@router.get("/watchlist", response_class=HTMLResponse)
+async def watchlist_page(request: Request):
+    """Render watchlist page."""
+    return templates.TemplateResponse("pages/watchlist.html", {"request": request})
+
+
+@router.get("/grid", response_class=HTMLResponse)
+async def grid_page(request: Request):
+    """Render grid trading page."""
+    return templates.TemplateResponse("pages/grid.html", {"request": request})

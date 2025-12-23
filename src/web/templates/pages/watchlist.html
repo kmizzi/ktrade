@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Watchlist - KTrade{% endblock %}
+{% block header %}Market Watchlist{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-end">
+        <button hx-get="/partials/watchlist/data"
+                hx-target="#watchlist-container"
+                hx-swap="innerHTML"
+                class="rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80">
+            Refresh
+        </button>
+    </div>
+
+    <div id="watchlist-container" class="rounded-lg border border-border bg-card p-6"
+         hx-get="/partials/watchlist/data"
+         hx-trigger="load, every 60s"
+         hx-swap="innerHTML">
+        <div class="space-y-2">
+            {% for _ in range(10) %}
+            <div class="h-10 skeleton rounded"></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
