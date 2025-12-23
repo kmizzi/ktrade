@@ -15,7 +15,7 @@
                 <span class="font-medium">{{ "%.0f"|format(signal.confidence * 100) }}%</span>
             </div>
             <div class="text-xs text-muted-foreground">
-                {{ signal.timestamp|truncate(16, True, '') if signal.timestamp else '--' }}
+                {{ signal.timestamp|friendly_time }}
             </div>
         </div>
     </div>

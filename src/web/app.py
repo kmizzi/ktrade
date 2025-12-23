@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
 import sys
 
 # Add project root to path
@@ -53,6 +54,49 @@ app = create_app()
 
 # Jinja2 templates
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
+
+def friendly_time(value, show_date=True):
+    """
+    Convert ISO timestamp to friendly format in PST.
+    Example: "Sunday, Dec 21 @ 4:26 PM PST"
+    """
+    if not value:
+        return "--"
+
+    try:
+        # Parse the timestamp
+        if isinstance(value, str):
+            # Handle ISO format strings
+            value = value.replace("Z", "+00:00")
+            if "+" not in value and len(value) == 19:
+                # Assume UTC if no timezone
+                dt = datetime.fromisoformat(value).replace(tzinfo=timezone.utc)
+            else:
+                dt = datetime.fromisoformat(value)
+        elif isinstance(value, datetime):
+            dt = value
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            return str(value)
+
+        # Convert to PST (UTC-8)
+        pst = timezone(timedelta(hours=-8))
+        dt_pst = dt.astimezone(pst)
+
+        if show_date:
+            # Full format: "Sunday, Dec 21 @ 4:26 PM PST"
+            return dt_pst.strftime("%A, %b %d @ %-I:%M %p PST")
+        else:
+            # Time only: "4:26 PM PST"
+            return dt_pst.strftime("%-I:%M %p PST")
+    except Exception:
+        return str(value)[:16] if value else "--"
+
+
+# Register custom filters
+templates.env.filters["friendly_time"] = friendly_time
 
 
 @app.get("/health")

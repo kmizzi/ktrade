@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
 
 from src.web.dependencies import get_db_session
 from src.web.services.portfolio_service import PortfolioService
@@ -19,6 +20,33 @@ from src.api.alpaca_client import alpaca_client
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
+
+
+def friendly_time(value, show_date=True):
+    """Convert ISO timestamp to friendly format in PST."""
+    if not value:
+        return "--"
+    try:
+        if isinstance(value, str):
+            value = value.replace("Z", "+00:00")
+            if "+" not in value and len(value) >= 19:
+                dt = datetime.fromisoformat(value[:19]).replace(tzinfo=timezone.utc)
+            else:
+                dt = datetime.fromisoformat(value)
+        elif isinstance(value, datetime):
+            dt = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        else:
+            return str(value)
+        pst = timezone(timedelta(hours=-8))
+        dt_pst = dt.astimezone(pst)
+        if show_date:
+            return dt_pst.strftime("%A, %b %d @ %-I:%M %p PST")
+        return dt_pst.strftime("%-I:%M %p PST")
+    except Exception:
+        return str(value)[:16] if value else "--"
+
+
+templates.env.filters["friendly_time"] = friendly_time
 
 
 @router.get("/", response_class=HTMLResponse)
