@@ -47,9 +47,9 @@ def backfill_portfolio_history(trading_client, db):
     try:
         from alpaca.trading.requests import GetPortfolioHistoryRequest
 
-        # Get portfolio history (up to 1 year)
+        # Get portfolio history (up to 1 year - use "1A" for annual)
         request = GetPortfolioHistoryRequest(
-            period="1Y",
+            period="1A",
             timeframe="1D"
         )
         history = trading_client.get_portfolio_history(request)

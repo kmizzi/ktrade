@@ -113,9 +113,14 @@ class TradeService:
             return {
                 "strategy": strategy_name,
                 "total_trades": 0,
+                "wins": 0,
+                "losses": 0,
                 "win_rate": 0,
                 "total_pnl": 0,
                 "avg_pnl": 0,
+                "signals_generated": 0,
+                "signals_executed": 0,
+                "execution_rate": 0,
             }
 
         wins = sum(1 for p in positions if p.pnl and p.pnl > 0)
