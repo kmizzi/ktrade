@@ -116,7 +116,7 @@
             <!-- Last Updated -->
             {% if grid.last_updated %}
             <div class="text-xs text-muted-foreground text-right">
-                Updated: {{ grid.last_updated|friendly_time(show_date=False) }}
+                Updated: {{ grid.last_updated|friendly_time(False) }}
             </div>
             {% endif %}
         </div>
