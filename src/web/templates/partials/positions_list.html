@@ -8,12 +8,26 @@
             </div>
             <span class="text-sm text-muted-foreground">{{ pos.quantity }} @ ${{ "%.2f"|format(pos.entry_price) }}</span>
         </div>
-        <div class="text-right">
-            <div class="font-medium {% if pos.pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
-                {% if pos.pnl >= 0 %}+{% endif %}${{ "%.2f"|format(pos.pnl) }}
+        <div class="flex items-center gap-6">
+            <!-- Today's P&L -->
+            <div class="text-right">
+                <div class="text-xs text-muted-foreground mb-0.5">Today</div>
+                <div class="text-sm {% if pos.day_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                    {% if pos.day_pnl >= 0 %}+{% endif %}${{ "%.2f"|format(pos.day_pnl) }}
+                </div>
+                <div class="text-xs text-muted-foreground">
+                    {% if pos.day_pnl_pct >= 0 %}+{% endif %}{{ "%.2f"|format(pos.day_pnl_pct) }}%
+                </div>
             </div>
-            <div class="text-xs text-muted-foreground">
-                {% if pos.pnl_pct >= 0 %}+{% endif %}{{ "%.2f"|format(pos.pnl_pct) }}%
+            <!-- All-time P&L -->
+            <div class="text-right">
+                <div class="text-xs text-muted-foreground mb-0.5">Total</div>
+                <div class="font-medium {% if pos.pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                    {% if pos.pnl >= 0 %}+{% endif %}${{ "%.2f"|format(pos.pnl) }}
+                </div>
+                <div class="text-xs text-muted-foreground">
+                    {% if pos.pnl_pct >= 0 %}+{% endif %}{{ "%.2f"|format(pos.pnl_pct) }}%
+                </div>
             </div>
         </div>
     </div>

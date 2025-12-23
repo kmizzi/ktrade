@@ -181,8 +181,12 @@ class PortfolioService:
                     "entry_price": float(p.get("avg_entry_price", 0)),
                     "current_price": float(p.get("current_price", 0)),
                     "market_value": float(p.get("market_value", 0)),
+                    # All-time P&L (since position opened)
                     "pnl": float(p.get("unrealized_pl", 0)),
                     "pnl_pct": float(p.get("unrealized_plpc", 0)) * 100,
+                    # Today's P&L (intraday change)
+                    "day_pnl": float(p.get("unrealized_intraday_pl", 0)),
+                    "day_pnl_pct": float(p.get("unrealized_intraday_plpc", 0)) * 100,
                 }
                 for p in positions
             ]
