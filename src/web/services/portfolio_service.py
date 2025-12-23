@@ -26,14 +26,18 @@ class PortfolioService:
 
             # Calculate position values
             positions_value = sum(float(p.get("market_value", 0)) for p in positions)
-            daily_pnl = sum(float(p.get("unrealized_intraday_pl", 0)) for p in positions)
+
+            # Day's P&L = current equity - previous day's equity
+            equity = float(account.get("equity", 0))
+            last_equity = float(account.get("last_equity", 0))
+            daily_pnl = equity - last_equity if last_equity > 0 else 0
 
             return {
-                "portfolio_value": float(account.get("equity", 0)),
+                "portfolio_value": equity,
                 "cash": float(account.get("cash", 0)),
                 "positions_value": positions_value,
                 "daily_pnl": daily_pnl,
-                "daily_pnl_pct": (daily_pnl / float(account.get("last_equity", 1))) * 100 if account.get("last_equity") else 0,
+                "daily_pnl_pct": (daily_pnl / last_equity * 100) if last_equity > 0 else 0,
                 "position_count": len(positions),
                 "buying_power": float(account.get("buying_power", 0)),
             }
