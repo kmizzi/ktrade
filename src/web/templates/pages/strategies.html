@@ -5,15 +5,117 @@
 
 {% block content %}
 <div class="space-y-6">
-    <div class="rounded-lg border border-border bg-card p-6"
-         hx-get="/partials/strategies/summary"
+    <!-- Overview Cards -->
+    <div class="grid gap-4 md:grid-cols-4"
+         hx-get="/partials/strategies/stats"
          hx-trigger="load"
          hx-swap="innerHTML">
-        <div class="space-y-2">
-            {% for _ in range(5) %}
-            <div class="h-20 skeleton rounded"></div>
-            {% endfor %}
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="text-sm text-muted-foreground">Active Strategies</div>
+            <div class="text-2xl font-bold mt-1"><div class="h-8 w-8 skeleton rounded"></div></div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="text-sm text-muted-foreground">Total Trades</div>
+            <div class="text-2xl font-bold mt-1"><div class="h-8 w-16 skeleton rounded"></div></div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="text-sm text-muted-foreground">Avg Win Rate</div>
+            <div class="text-2xl font-bold mt-1"><div class="h-8 w-16 skeleton rounded"></div></div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="text-sm text-muted-foreground">Total P&L</div>
+            <div class="text-2xl font-bold mt-1"><div class="h-8 w-20 skeleton rounded"></div></div>
         </div>
     </div>
+
+    <!-- Strategy Performance Table -->
+    <div class="rounded-lg border border-border bg-card overflow-hidden">
+        <div class="border-b border-border p-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-semibold">Strategy Comparison</h2>
+                    <p class="text-xs text-muted-foreground">Performance metrics by trading strategy</p>
+                </div>
+
+                <!-- Sort Controls -->
+                <div class="flex items-center gap-2"
+                     x-data="{
+                         sort: 'pnl_desc',
+                         refresh() {
+                             htmx.ajax('GET', '/partials/strategies/summary?sort=' + this.sort, '#strategies-container');
+                         }
+                     }">
+                    <label class="text-sm text-muted-foreground">Sort by:</label>
+                    <div class="relative">
+                        <select x-model="sort"
+                                @change="refresh()"
+                                class="appearance-none pl-3 pr-8 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer">
+                            <option value="pnl_desc">Highest P&L</option>
+                            <option value="pnl_asc">Lowest P&L</option>
+                            <option value="win_rate_desc">Best Win Rate</option>
+                            <option value="trades_desc">Most Trades</option>
+                            <option value="name_asc">Name A-Z</option>
+                        </select>
+                        <svg class="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="strategies-container"
+             hx-get="/partials/strategies/summary"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="p-4 space-y-2">
+                {% for _ in range(5) %}
+                <div class="h-20 skeleton rounded"></div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Strategy Information -->
+    <section class="rounded-lg border border-blue-200 bg-blue-50/50 p-4" x-data="{ expanded: false }">
+        <div class="flex items-start gap-3">
+            <svg class="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="flex-1">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-blue-900">About Strategy Metrics</h3>
+                    <button @click="expanded = !expanded" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                        <span x-text="expanded ? 'Hide' : 'Learn more'"></span>
+                        <svg class="h-4 w-4 transition-transform" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="text-sm text-blue-800 mt-1">
+                    Compare how different trading strategies perform to identify what works best.
+                </p>
+
+                <div x-show="expanded" x-collapse class="mt-4 grid md:grid-cols-2 gap-4 text-sm text-blue-900">
+                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                        <strong>Win Rate</strong>
+                        <p class="text-blue-700 mt-1">Percentage of profitable trades. Above 50% is generally good, but depends on risk/reward ratio.</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                        <strong>Total P&L</strong>
+                        <p class="text-blue-700 mt-1">Total realized profit or loss from all trades using this strategy.</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                        <strong>Execution Rate</strong>
+                        <p class="text-blue-700 mt-1">Percentage of signals that were actually executed. Low rates may indicate risk limits blocking trades.</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                        <strong>Trade Count</strong>
+                        <p class="text-blue-700 mt-1">Number of completed trades. More trades provide more reliable metrics.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 {% endblock %}

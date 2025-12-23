@@ -1,0 +1,27 @@
+<!-- Active Strategies -->
+<div class="rounded-lg border border-border bg-card p-4">
+    <div class="text-sm text-muted-foreground">Active Strategies</div>
+    <div class="text-2xl font-bold mt-1">{{ stats.active_strategies }}</div>
+</div>
+
+<!-- Total Trades -->
+<div class="rounded-lg border border-border bg-card p-4">
+    <div class="text-sm text-muted-foreground">Total Trades</div>
+    <div class="text-2xl font-bold mt-1">{{ "{:,}".format(stats.total_trades) }}</div>
+</div>
+
+<!-- Avg Win Rate -->
+<div class="rounded-lg border border-border bg-card p-4">
+    <div class="text-sm text-muted-foreground">Avg Win Rate</div>
+    <div class="text-2xl font-bold mt-1 {% if stats.avg_win_rate >= 50 %}text-profit{% else %}text-loss{% endif %}">
+        {{ "%.1f"|format(stats.avg_win_rate) }}%
+    </div>
+</div>
+
+<!-- Total P&L -->
+<div class="rounded-lg border border-border bg-card p-4">
+    <div class="text-sm text-muted-foreground">Total P&L</div>
+    <div class="text-2xl font-bold mt-1 {% if stats.total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+        {% if stats.total_pnl >= 0 %}+{% endif %}${{ "{:,.2f}".format(stats.total_pnl) }}
+    </div>
+</div>

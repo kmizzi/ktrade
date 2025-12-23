@@ -1,50 +1,100 @@
 {% set has_bot_strategies = strategies|selectattr('execution_rate', '>', 0)|list|length > 0 %}
 
 {% if strategies %}
-<div class="space-y-3">
-    {% for strat in strategies %}
-    <div class="rounded-md border border-border p-3">
-        <div class="flex items-center justify-between mb-2">
-            <span class="font-medium">{{ strat.strategy }}</span>
-            <span class="text-sm {% if strat.total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
-                {% if strat.total_pnl >= 0 %}+{% endif %}${{ "%.2f"|format(strat.total_pnl) }}
-            </span>
-        </div>
-        <div class="grid grid-cols-{% if strat.execution_rate > 0 %}3{% else %}2{% endif %} gap-2 text-sm">
-            <div>
-                <span class="text-muted-foreground">Win Rate</span>
-                <div class="font-medium">{{ "%.1f"|format(strat.win_rate) }}%</div>
-            </div>
-            <div>
-                <span class="text-muted-foreground">Trades</span>
-                <div class="font-medium">{{ strat.total_trades }}</div>
-            </div>
-            {% if strat.execution_rate > 0 %}
-            <div>
-                <span class="text-muted-foreground">Exec Rate</span>
-                <div class="font-medium">{{ "%.1f"|format(strat.execution_rate) }}%</div>
-            </div>
-            {% endif %}
-        </div>
-        <!-- Win rate bar -->
-        <div class="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-            <div class="h-full rounded-full {% if strat.win_rate >= 50 %}bg-profit{% else %}bg-loss{% endif %}"
-                 style="width: {{ strat.win_rate }}%"></div>
-        </div>
-    </div>
-    {% endfor %}
-
-    {% if not has_bot_strategies %}
-    <div class="text-xs text-muted-foreground text-center pt-2 border-t border-border mt-3">
-        Only showing imported trades. Bot strategies will appear here once they execute trades.
-    </div>
-    {% endif %}
+<div class="overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead class="bg-muted/50">
+            <tr>
+                <th class="px-4 py-3 text-left font-medium text-muted-foreground">Strategy</th>
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Trades</th>
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Win Rate</th>
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Wins</th>
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Losses</th>
+                {% if has_bot_strategies %}
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Exec Rate</th>
+                {% endif %}
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Total P&L</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+            {% for strat in strategies %}
+            <tr class="hover:bg-muted/30 transition-colors">
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium">{{ strat.strategy }}</span>
+                        {% if strat.execution_rate > 0 %}
+                        <span class="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">Bot</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-right font-mono">{{ strat.total_trades }}</td>
+                <td class="px-4 py-3 text-right">
+                    <div class="flex items-center justify-end gap-2">
+                        <div class="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div class="h-full rounded-full {% if strat.win_rate >= 50 %}bg-profit{% else %}bg-loss{% endif %}"
+                                 style="width: {{ strat.win_rate }}%"></div>
+                        </div>
+                        <span class="font-medium {% if strat.win_rate >= 50 %}text-profit{% else %}text-loss{% endif %}">
+                            {{ "%.1f"|format(strat.win_rate) }}%
+                        </span>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-right text-profit">{{ strat.wins }}</td>
+                <td class="px-4 py-3 text-right text-loss">{{ strat.losses }}</td>
+                {% if has_bot_strategies %}
+                <td class="px-4 py-3 text-right">
+                    {% if strat.execution_rate > 0 %}
+                    <span class="{% if strat.execution_rate >= 80 %}text-profit{% elif strat.execution_rate >= 50 %}text-yellow-500{% else %}text-loss{% endif %}">
+                        {{ "%.1f"|format(strat.execution_rate) }}%
+                    </span>
+                    {% else %}
+                    <span class="text-muted-foreground">--</span>
+                    {% endif %}
+                </td>
+                {% endif %}
+                <td class="px-4 py-3 text-right font-medium {% if strat.total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                    {% if strat.total_pnl >= 0 %}+{% endif %}${{ "{:,.2f}".format(strat.total_pnl) }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <!-- Summary Footer -->
+        <tfoot class="border-t-2 border-border bg-muted/50">
+            {% set total_trades = strategies|sum(attribute='total_trades') %}
+            {% set total_wins = strategies|sum(attribute='wins') %}
+            {% set total_losses = strategies|sum(attribute='losses') %}
+            {% set total_pnl = strategies|sum(attribute='total_pnl') %}
+            {% set avg_win_rate = (total_wins / total_trades * 100) if total_trades > 0 else 0 %}
+            <tr class="font-medium">
+                <td class="px-4 py-3">Total ({{ strategies|length }} strategies)</td>
+                <td class="px-4 py-3 text-right font-mono">{{ total_trades }}</td>
+                <td class="px-4 py-3 text-right {% if avg_win_rate >= 50 %}text-profit{% else %}text-loss{% endif %}">
+                    {{ "%.1f"|format(avg_win_rate) }}%
+                </td>
+                <td class="px-4 py-3 text-right text-profit">{{ total_wins }}</td>
+                <td class="px-4 py-3 text-right text-loss">{{ total_losses }}</td>
+                {% if has_bot_strategies %}
+                <td class="px-4 py-3 text-right">--</td>
+                {% endif %}
+                <td class="px-4 py-3 text-right {% if total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                    {% if total_pnl >= 0 %}+{% endif %}${{ "{:,.2f}".format(total_pnl) }}
+                </td>
+            </tr>
+        </tfoot>
+    </table>
 </div>
+
+{% if not has_bot_strategies %}
+<div class="text-xs text-muted-foreground text-center py-3 border-t border-border bg-muted/20">
+    Only showing imported trades. Bot strategies will appear here once they execute trades.
+</div>
+{% endif %}
 {% else %}
-<div class="text-center py-8 text-muted-foreground">
-    <svg class="mx-auto h-12 w-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div class="text-center py-12 text-muted-foreground">
+    <svg class="mx-auto h-12 w-12 mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
     </svg>
-    <p>No strategy data</p>
+    <p class="font-medium">No strategy data</p>
+    <p class="text-sm mt-1">Strategy performance will appear here once trades are executed</p>
 </div>
 {% endif %}

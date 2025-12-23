@@ -261,12 +261,33 @@ async def trades_partial(request: Request, db: Session = Depends(get_db_session)
         )
 
 
+@router.get("/partials/strategies/stats", response_class=HTMLResponse)
+async def strategies_stats_partial(request: Request, db: Session = Depends(get_db_session)):
+    """Get strategy stats summary partial for HTMX."""
+    try:
+        service = TradeService(db)
+        stats = service.get_strategy_stats()
+        return templates.TemplateResponse(
+            "partials/strategies_stats.html",
+            {"request": request, "stats": stats}
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "partials/error.html",
+            {"request": request, "error": str(e)}
+        )
+
+
 @router.get("/partials/strategies/summary", response_class=HTMLResponse)
-async def strategies_partial(request: Request, db: Session = Depends(get_db_session)):
+async def strategies_partial(
+    request: Request,
+    db: Session = Depends(get_db_session),
+    sort: Optional[str] = None,
+):
     """Get strategy performance partial for HTMX."""
     try:
         service = TradeService(db)
-        strategies = service.get_strategy_performance()
+        strategies = service.get_strategy_performance(sort=sort)
         return templates.TemplateResponse(
             "partials/strategy_summary.html",
             {"request": request, "strategies": strategies}

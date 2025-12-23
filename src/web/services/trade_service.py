@@ -163,7 +163,30 @@ class TradeService:
         )
         return [s[0] for s in strategies]
 
-    def get_strategy_performance(self) -> List[Dict[str, Any]]:
+    def get_strategy_stats(self) -> Dict[str, Any]:
+        """Get aggregate statistics across all strategies."""
+        perf = self.get_strategy_performance()
+
+        active_strategies = len(perf)
+        total_trades = sum(s.get("total_trades", 0) for s in perf)
+        total_pnl = sum(s.get("total_pnl", 0) for s in perf)
+
+        # Weighted average win rate by trade count
+        if total_trades > 0:
+            weighted_win_rate = sum(
+                s.get("win_rate", 0) * s.get("total_trades", 0) for s in perf
+            ) / total_trades
+        else:
+            weighted_win_rate = 0
+
+        return {
+            "active_strategies": active_strategies,
+            "total_trades": total_trades,
+            "avg_win_rate": round(weighted_win_rate, 1),
+            "total_pnl": round(total_pnl, 2),
+        }
+
+    def get_strategy_performance(self, sort: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get performance metrics for all strategies."""
         strategies = self.get_strategies()
 
@@ -186,8 +209,21 @@ class TradeService:
                 metrics["strategy"] = name_map[metrics["strategy"]]
             results.append(metrics)
 
-        # Sort by total trades (most active first)
-        results.sort(key=lambda x: x["total_trades"], reverse=True)
+        # Apply sorting
+        sort_funcs = {
+            "pnl_desc": (lambda x: x["total_pnl"], True),
+            "pnl_asc": (lambda x: x["total_pnl"], False),
+            "win_rate_desc": (lambda x: x["win_rate"], True),
+            "trades_desc": (lambda x: x["total_trades"], True),
+            "name_asc": (lambda x: x["strategy"], False),
+        }
+        if sort and sort in sort_funcs:
+            key_func, reverse = sort_funcs[sort]
+            results.sort(key=key_func, reverse=reverse)
+        else:
+            # Default: sort by total trades (most active first)
+            results.sort(key=lambda x: x["total_trades"], reverse=True)
+
         return results
 
     def get_strategy_metrics(self, strategy_name: str) -> Dict[str, Any]:
