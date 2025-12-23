@@ -244,10 +244,14 @@ class GridTradingStrategy(BaseStrategy):
             Center price or None
         """
         try:
-            # Get 24 hours of hourly bars
+            # Get 24 hours of hourly bars - must specify time range for crypto
+            end = datetime.utcnow()
+            start = end - timedelta(hours=24)
             bars = alpaca_client.get_bars(
                 symbol=symbol,
                 timeframe="1Hour",
+                start=start,
+                end=end,
                 limit=24
             )
 
@@ -314,7 +318,10 @@ class GridTradingStrategy(BaseStrategy):
     def _get_current_price(self, symbol: str) -> Optional[float]:
         """Get current price for a symbol."""
         try:
-            bars = alpaca_client.get_bars(symbol, timeframe="1Min", limit=1)
+            # Must specify time range for crypto to get recent data
+            end = datetime.utcnow()
+            start = end - timedelta(hours=1)
+            bars = alpaca_client.get_bars(symbol, timeframe="1Min", start=start, end=end, limit=10)
             if bars:
                 return bars[-1]['close']
             return None
