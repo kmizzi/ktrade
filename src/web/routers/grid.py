@@ -4,16 +4,18 @@ Grid Trading API routes and page endpoints.
 
 from fastapi import APIRouter, Depends, Request, Query
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from pathlib import Path
 from typing import Optional
 
 from src.web.dependencies import get_db_session
 from src.web.services.grid_service import GridService
 
 router = APIRouter()
-templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
+
+# Import templates from app.py to get custom filters (friendly_time, etc.)
+def get_templates():
+    from src.web.app import templates
+    return templates
 
 
 # ============ Page Routes ============
@@ -26,7 +28,7 @@ async def grid_page(request: Request, db: Session = Depends(get_db_session)):
     grids = service.get_all_grids()
     config = service.get_grid_config()
 
-    return templates.TemplateResponse(
+    return get_templates().TemplateResponse(
         "pages/grid.html",
         {
             "request": request,
@@ -111,7 +113,7 @@ async def grid_summary_partial(request: Request, db: Session = Depends(get_db_se
     """Get grid summary partial for HTMX."""
     service = GridService(db)
     summary = service.get_grid_summary()
-    return templates.TemplateResponse(
+    return get_templates().TemplateResponse(
         "partials/grid_summary.html",
         {"request": request, "summary": summary}
     )
@@ -123,7 +125,7 @@ async def grid_status_partial(request: Request, db: Session = Depends(get_db_ses
     service = GridService(db)
     grids = service.get_all_grids()
     prices = service.get_current_prices()
-    return templates.TemplateResponse(
+    return get_templates().TemplateResponse(
         "partials/grid_status.html",
         {"request": request, "grids": grids, "prices": prices}
     )
@@ -140,7 +142,7 @@ async def grid_detail_partial(
     grid = service.get_grid_status(symbol)
     prices = service.get_current_prices()
     current_price = prices.get(symbol, 0)
-    return templates.TemplateResponse(
+    return get_templates().TemplateResponse(
         "partials/grid_detail.html",
         {"request": request, "grid": grid, "current_price": current_price}
     )
@@ -156,7 +158,7 @@ async def grid_orders_partial(
     """Get grid order history partial for HTMX."""
     service = GridService(db)
     orders = service.get_order_history(symbol=symbol, limit=limit)
-    return templates.TemplateResponse(
+    return get_templates().TemplateResponse(
         "partials/grid_orders.html",
         {"request": request, "orders": orders}
     )
