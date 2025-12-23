@@ -77,13 +77,20 @@
                         <div class="flex-1 h-1 bg-loss/30 rounded overflow-hidden">
                             {% if level.status == 'filled' %}
                             <div class="h-full bg-loss w-full"></div>
-                            {% elif level.status == 'placed' %}
+                            {% elif level.status == 'placed' or level.status == 'open' %}
                             <div class="h-full bg-loss/60 w-1/2"></div>
                             {% endif %}
                         </div>
+                        {% if level.status == 'filled' and level.filled_price %}
+                        <span class="w-28 text-right text-sm font-mono">
+                            <span class="text-muted-foreground line-through text-xs">${{ "{:,.0f}".format(level.price) }}</span>
+                            <span class="text-loss font-medium ml-1">${{ "{:,.2f}".format(level.filled_price) }}</span>
+                        </span>
+                        {% else %}
                         <span class="w-28 text-right text-sm font-mono font-medium">${{ "{:,.2f}".format(level.price) }}</span>
-                        <span class="w-16 text-right text-xs {% if level.status == 'filled' %}text-loss font-medium{% else %}text-muted-foreground{% endif %}">
-                            {% if level.status == 'filled' %}Filled{% elif level.status == 'placed' %}Pending{% else %}--{% endif %}
+                        {% endif %}
+                        <span class="w-20 text-right text-xs {% if level.status == 'filled' %}text-loss font-medium{% elif level.status == 'open' %}text-yellow-600{% else %}text-muted-foreground{% endif %}">
+                            {% if level.status == 'filled' %}Sold{% elif level.status == 'open' %}Pending{% elif level.status == 'placed' %}Pending{% else %}--{% endif %}
                         </span>
                     </div>
                     {% endfor %}
@@ -105,13 +112,20 @@
                         <div class="flex-1 h-1 bg-profit/30 rounded overflow-hidden">
                             {% if level.status == 'filled' %}
                             <div class="h-full bg-profit w-full"></div>
-                            {% elif level.status == 'placed' %}
+                            {% elif level.status == 'placed' or level.status == 'open' %}
                             <div class="h-full bg-profit/60 w-1/2"></div>
                             {% endif %}
                         </div>
+                        {% if level.status == 'filled' and level.filled_price %}
+                        <span class="w-28 text-right text-sm font-mono">
+                            <span class="text-muted-foreground line-through text-xs">${{ "{:,.0f}".format(level.price) }}</span>
+                            <span class="text-profit font-medium ml-1">${{ "{:,.2f}".format(level.filled_price) }}</span>
+                        </span>
+                        {% else %}
                         <span class="w-28 text-right text-sm font-mono font-medium">${{ "{:,.2f}".format(level.price) }}</span>
-                        <span class="w-16 text-right text-xs {% if level.status == 'filled' %}text-profit font-medium{% else %}text-muted-foreground{% endif %}">
-                            {% if level.status == 'filled' %}Filled{% elif level.status == 'placed' %}Pending{% else %}--{% endif %}
+                        {% endif %}
+                        <span class="w-20 text-right text-xs {% if level.status == 'filled' %}text-profit font-medium{% elif level.status == 'open' %}text-yellow-600{% else %}text-muted-foreground{% endif %}">
+                            {% if level.status == 'filled' %}Bought{% elif level.status == 'open' %}Pending{% elif level.status == 'placed' %}Pending{% else %}--{% endif %}
                         </span>
                     </div>
                     {% endfor %}

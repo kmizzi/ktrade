@@ -48,10 +48,12 @@ class GridService:
         buy_levels = [l for l in grid.levels if l.order_type == "buy"]
         sell_levels = [l for l in grid.levels if l.order_type == "sell"]
 
-        # Sort by level number and extract prices
-        buy_prices = [{"level": l.level, "price": l.price, "status": l.status}
+        # Sort by level number and extract prices with fill info
+        buy_prices = [{"level": l.level, "price": l.price, "status": l.status,
+                       "filled_price": l.filled_price, "filled_qty": l.filled_qty}
                       for l in sorted(buy_levels, key=lambda x: abs(x.level))]
-        sell_prices = [{"level": l.level, "price": l.price, "status": l.status}
+        sell_prices = [{"level": l.level, "price": l.price, "status": l.status,
+                        "filled_price": l.filled_price, "filled_qty": l.filled_qty}
                        for l in sorted(sell_levels, key=lambda x: x.level)]
 
         return {
