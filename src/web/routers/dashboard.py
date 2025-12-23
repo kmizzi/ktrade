@@ -137,11 +137,11 @@ async def generate_signals(request: Request, db: Session = Depends(get_db_sessio
 
 
 @router.get("/partials/trades/recent", response_class=HTMLResponse)
-async def trades_partial(request: Request, db: Session = Depends(get_db_session)):
+async def trades_partial(request: Request, db: Session = Depends(get_db_session), limit: int = 5):
     """Get recent trades partial for HTMX."""
     try:
         service = TradeService(db)
-        trades = service.get_recent_trades(limit=5)
+        trades = service.get_recent_trades(limit=limit)
         return templates.TemplateResponse(
             "partials/trades_list.html",
             {"request": request, "trades": trades}

@@ -6,7 +6,7 @@
 {% block content %}
 <div class="space-y-6">
     <div class="rounded-lg border border-border bg-card"
-         hx-get="/partials/trades/recent"
+         hx-get="/partials/trades/recent?limit=50"
          hx-trigger="load"
          hx-swap="innerHTML">
         <div class="p-6">

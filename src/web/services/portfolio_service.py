@@ -34,7 +34,7 @@ class PortfolioService:
                 "positions_value": positions_value,
                 "daily_pnl": daily_pnl,
                 "daily_pnl_pct": (daily_pnl / float(account.get("last_equity", 1))) * 100 if account.get("last_equity") else 0,
-                "open_positions": len(positions),
+                "position_count": len(positions),
                 "buying_power": float(account.get("buying_power", 0)),
             }
         except Exception as e:
@@ -44,7 +44,7 @@ class PortfolioService:
                 "positions_value": 0,
                 "daily_pnl": 0,
                 "daily_pnl_pct": 0,
-                "open_positions": 0,
+                "position_count": 0,
                 "buying_power": 0,
                 "error": str(e),
             }
