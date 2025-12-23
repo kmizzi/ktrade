@@ -1,121 +1,194 @@
 {% if grids %}
-<div class="grid gap-4 md:grid-cols-2">
+<div class="grid gap-6 md:grid-cols-2">
     {% for grid in grids %}
     <div class="rounded-lg border border-border bg-card overflow-hidden">
         <!-- Header -->
-        <div class="border-b border-border p-4">
+        <div class="border-b border-border p-4 bg-muted/30">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <span class="text-lg font-semibold">{{ grid.symbol }}</span>
                     {% if grid.status == 'active' %}
-                    <span class="inline-flex items-center gap-1 rounded-full bg-profit/10 text-profit px-2 py-0.5 text-xs font-medium">
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-profit/10 text-profit px-2.5 py-1 text-xs font-medium">
                         <span class="h-1.5 w-1.5 rounded-full bg-profit animate-pulse"></span>
                         Active
                     </span>
                     {% elif grid.status == 'stopped' %}
-                    <span class="inline-flex items-center rounded-full bg-loss/10 text-loss px-2 py-0.5 text-xs font-medium">
+                    <span class="inline-flex items-center rounded-full bg-loss/10 text-loss px-2.5 py-1 text-xs font-medium">
                         Stopped
                     </span>
                     {% else %}
-                    <span class="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-xs font-medium">
+                    <span class="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2.5 py-1 text-xs font-medium">
                         {{ grid.status|capitalize }}
                     </span>
                     {% endif %}
                 </div>
                 <div class="text-right">
-                    <div class="text-sm font-medium {% if grid.realized_profit >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                    <div class="text-lg font-semibold {% if grid.realized_profit >= 0 %}text-profit{% else %}text-loss{% endif %}">
                         {% if grid.realized_profit >= 0 %}+{% endif %}${{ "%.2f"|format(grid.realized_profit) }}
                     </div>
-                    <div class="text-xs text-muted-foreground">Profit</div>
+                    <div class="text-xs text-muted-foreground">Total Profit</div>
                 </div>
             </div>
         </div>
 
-        <!-- Grid Stats -->
-        <div class="p-4 space-y-4">
-            <!-- Price Info -->
-            <div class="flex items-center justify-between text-sm">
-                <span class="text-muted-foreground">Center Price</span>
-                <span class="font-medium">${{ "{:,.2f}".format(grid.center_price) }}</span>
+        <!-- Grid Content -->
+        <div class="p-4 space-y-5">
+            <!-- Price Info Row -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="rounded-lg bg-muted/30 p-3">
+                    <div class="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span title="The reference price around which buy/sell levels are calculated">Center Price</span>
+                    </div>
+                    <div class="text-base font-semibold">${{ "{:,.2f}".format(grid.center_price) }}</div>
+                </div>
+                {% if prices and prices.get(grid.symbol) %}
+                <div class="rounded-lg bg-muted/30 p-3">
+                    <div class="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                        <span>Current Price</span>
+                    </div>
+                    {% set current = prices.get(grid.symbol, 0) %}
+                    {% set pct_diff = ((current - grid.center_price) / grid.center_price * 100) if grid.center_price > 0 else 0 %}
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-base font-semibold">${{ "{:,.2f}".format(current) }}</span>
+                        <span class="text-xs {% if pct_diff >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                            {% if pct_diff >= 0 %}+{% endif %}{{ "%.1f"|format(pct_diff) }}%
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
             </div>
-            {% if prices and prices.get(grid.symbol) %}
-            <div class="flex items-center justify-between text-sm">
-                <span class="text-muted-foreground">Current Price</span>
-                <span class="font-medium">${{ "{:,.2f}".format(prices.get(grid.symbol, 0)) }}</span>
-            </div>
-            {% endif %}
 
             <!-- Visual Grid Levels -->
-            <div class="mt-4">
-                <div class="text-xs text-muted-foreground mb-2">Grid Levels</div>
-                <div class="relative h-32 bg-muted/30 rounded-lg overflow-hidden">
-                    <!-- Center line -->
-                    <div class="absolute left-0 right-0 top-1/2 h-px bg-border"></div>
-                    <div class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                        Center
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                        <span>Grid Levels</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs">
+                        <span class="flex items-center gap-1">
+                            <span class="h-2 w-2 rounded-full bg-loss"></span>
+                            <span class="text-muted-foreground">Sell</span>
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="h-2 w-2 rounded-full bg-profit"></span>
+                            <span class="text-muted-foreground">Buy</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Grid Visualization -->
+                <div class="relative bg-muted/20 rounded-lg border border-border overflow-hidden" style="height: 180px;">
+                    <!-- Background grid pattern -->
+                    <div class="absolute inset-0 opacity-30">
+                        {% for i in range(5) %}
+                        <div class="absolute left-0 right-0 border-t border-border" style="top: {{ i * 25 }}%"></div>
+                        {% endfor %}
                     </div>
 
-                    <!-- Sell levels (above center) -->
-                    {% set sell_levels = grid.levels.sell_levels or 0 %}
+                    <!-- Center line - prominent -->
+                    <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2">
+                        <div class="h-0.5 bg-gray-400"></div>
+                        <div class="absolute left-3 -top-2.5 bg-muted px-1.5 py-0.5 rounded text-xs font-medium text-muted-foreground">
+                            Center
+                        </div>
+                    </div>
+
+                    <!-- Sell levels (above center) - evenly spaced -->
+                    {% set sell_levels = grid.levels.sell_levels or 5 %}
+                    {% set level_height = 45 / sell_levels %}
                     {% for i in range(sell_levels) %}
-                    <div class="absolute left-1/4 right-4 h-px bg-loss/40"
-                         style="top: {{ 50 - (i + 1) * (45 / sell_levels) }}%">
-                        <span class="absolute right-0 -top-2.5 text-xs text-loss/60">S{{ i + 1 }}</span>
+                    {% set level_pct = 50 - (i + 1) * level_height %}
+                    <div class="absolute left-16 right-3" style="top: {{ level_pct }}%;">
+                        <div class="h-px bg-loss/60"></div>
+                        <div class="absolute right-0 -top-2 px-1.5 py-0.5 rounded text-[10px] font-medium text-loss bg-loss/10">
+                            S{{ i + 1 }}
+                        </div>
                     </div>
                     {% endfor %}
 
-                    <!-- Buy levels (below center) -->
-                    {% set buy_levels = grid.levels.buy_levels or 0 %}
+                    <!-- Buy levels (below center) - evenly spaced -->
+                    {% set buy_levels = grid.levels.buy_levels or 5 %}
+                    {% set level_height = 45 / buy_levels %}
                     {% for i in range(buy_levels) %}
-                    <div class="absolute left-1/4 right-4 h-px bg-profit/40"
-                         style="top: {{ 50 + (i + 1) * (45 / buy_levels) }}%">
-                        <span class="absolute right-0 -top-2.5 text-xs text-profit/60">B{{ i + 1 }}</span>
+                    {% set level_pct = 50 + (i + 1) * level_height %}
+                    <div class="absolute left-16 right-3" style="top: {{ level_pct }}%;">
+                        <div class="h-px bg-profit/60"></div>
+                        <div class="absolute right-0 -top-2 px-1.5 py-0.5 rounded text-[10px] font-medium text-profit bg-profit/10">
+                            B{{ i + 1 }}
+                        </div>
                     </div>
                     {% endfor %}
 
                     <!-- Current price marker -->
                     {% if prices and prices.get(grid.symbol) and grid.center_price > 0 %}
                     {% set price_pct = ((prices.get(grid.symbol, grid.center_price) - grid.center_price) / grid.center_price) * 100 %}
-                    {% set clamped_pct = [[-45, price_pct * 5]|max, 45]|min %}
-                    <div class="absolute left-1/4 right-4 h-1 bg-primary rounded"
-                         style="top: calc(50% - {{ clamped_pct }}%)">
-                        <span class="absolute -left-14 -top-1.5 text-xs font-medium text-primary">Price</span>
+                    {% set clamped_pct = [[-40, price_pct * 4]|max, 40]|min %}
+                    <div class="absolute left-3 right-3" style="top: calc(50% - {{ clamped_pct }}%);">
+                        <div class="flex items-center gap-1">
+                            <svg class="h-3 w-3 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            <div class="flex-1 h-0.5 bg-primary rounded"></div>
+                            <span class="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">PRICE</span>
+                        </div>
                     </div>
                     {% endif %}
+
+                    <!-- Y-axis labels -->
+                    <div class="absolute left-1 top-1 text-[9px] text-loss/70">Higher</div>
+                    <div class="absolute left-1 bottom-1 text-[9px] text-profit/70">Lower</div>
                 </div>
             </div>
 
             <!-- Order Stats -->
-            <div class="grid grid-cols-3 gap-2 pt-2 border-t border-border">
-                <div class="text-center">
-                    <div class="text-lg font-semibold text-profit">{{ grid.open_buy_orders }}</div>
+            <div class="grid grid-cols-3 gap-3">
+                <div class="text-center p-3 rounded-lg bg-profit/5 border border-profit/20" title="Pending buy orders waiting to fill when price drops">
+                    <div class="text-xl font-bold text-profit">{{ grid.open_buy_orders }}</div>
                     <div class="text-xs text-muted-foreground">Buy Orders</div>
                 </div>
-                <div class="text-center">
-                    <div class="text-lg font-semibold text-loss">{{ grid.open_sell_orders }}</div>
+                <div class="text-center p-3 rounded-lg bg-loss/5 border border-loss/20" title="Pending sell orders waiting to fill when price rises">
+                    <div class="text-xl font-bold text-loss">{{ grid.open_sell_orders }}</div>
                     <div class="text-xs text-muted-foreground">Sell Orders</div>
                 </div>
-                <div class="text-center">
-                    <div class="text-lg font-semibold">{{ grid.filled_positions }}</div>
+                <div class="text-center p-3 rounded-lg bg-muted/50 border border-border" title="Positions bought that are waiting to be sold">
+                    <div class="text-xl font-bold">{{ grid.filled_positions }}</div>
                     <div class="text-xs text-muted-foreground">Filled</div>
                 </div>
             </div>
 
             <!-- Investment Stats -->
-            <div class="flex items-center justify-between pt-2 border-t border-border text-sm">
-                <div>
+            <div class="flex items-center justify-between pt-3 border-t border-border text-sm">
+                <div class="flex items-center gap-1" title="Total capital deployed in this grid">
+                    <svg class="h-3.5 w-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
                     <span class="text-muted-foreground">Invested:</span>
-                    <span class="font-medium ml-1">${{ "{:,.2f}".format(grid.total_invested) }}</span>
+                    <span class="font-semibold">${{ "{:,.2f}".format(grid.total_invested) }}</span>
                 </div>
-                <div>
-                    <span class="text-muted-foreground">Qty/Level:</span>
-                    <span class="font-medium ml-1">{{ "%.4f"|format(grid.qty_per_level) if grid.qty_per_level < 1 else "%.2f"|format(grid.qty_per_level) }}</span>
+                <div class="flex items-center gap-1" title="Amount bought/sold at each grid level">
+                    <svg class="h-3.5 w-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                    </svg>
+                    <span class="text-muted-foreground">Per Level:</span>
+                    <span class="font-semibold">{{ "%.4f"|format(grid.qty_per_level) if grid.qty_per_level < 1 else "%.2f"|format(grid.qty_per_level) }}</span>
                 </div>
             </div>
 
             <!-- Last Updated -->
             {% if grid.last_updated %}
-            <div class="text-xs text-muted-foreground text-right">
+            <div class="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
                 Updated: {{ grid.last_updated|friendly_time(False) }}
             </div>
             {% endif %}
