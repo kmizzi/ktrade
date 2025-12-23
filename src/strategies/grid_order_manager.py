@@ -272,13 +272,15 @@ class GridOrderManager:
             # Only place pending buy orders initially
             if level.status == "pending" and level.order_type == "buy":
                 try:
+                    # Use timestamp in client_order_id to ensure uniqueness
+                    ts = int(datetime.utcnow().timestamp())
                     order = alpaca_client.place_limit_order(
                         symbol=symbol,
                         qty=grid.qty_per_level,
                         limit_price=level.price,
                         side="buy",
                         time_in_force="gtc",
-                        client_order_id=f"grid_{symbol}_{level.level}"
+                        client_order_id=f"grid_{symbol}_{level.level}_{ts}"
                     )
 
                     level.order_id = str(order['id'])
@@ -357,13 +359,14 @@ class GridOrderManager:
                             sell_price = grid.center_price * (1 + (2.0 / 100) * sell_level)
 
                             try:
+                                ts = int(datetime.utcnow().timestamp())
                                 sell_order = alpaca_client.place_limit_order(
                                     symbol=symbol,
                                     qty=level.filled_qty,
                                     limit_price=round(sell_price, 2),
                                     side="sell",
                                     time_in_force="gtc",
-                                    client_order_id=f"grid_{symbol}_sell_{level.level}"
+                                    client_order_id=f"grid_{symbol}_sell_{level.level}_{ts}"
                                 )
 
                                 # Add or update sell level
@@ -409,13 +412,14 @@ class GridOrderManager:
                             buy_price = grid.center_price * (1 - (2.0 / 100) * abs(buy_level))
 
                             try:
+                                ts = int(datetime.utcnow().timestamp())
                                 buy_order = alpaca_client.place_limit_order(
                                     symbol=symbol,
                                     qty=grid.qty_per_level,
                                     limit_price=round(buy_price, 2),
                                     side="buy",
                                     time_in_force="gtc",
-                                    client_order_id=f"grid_{symbol}_rebuy_{buy_level}"
+                                    client_order_id=f"grid_{symbol}_rebuy_{buy_level}_{ts}"
                                 )
 
                                 # Update original buy level to reopen
