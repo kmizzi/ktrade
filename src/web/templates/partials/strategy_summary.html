@@ -8,7 +8,7 @@
                 {% if strat.total_pnl >= 0 %}+{% endif %}${{ "%.2f"|format(strat.total_pnl) }}
             </span>
         </div>
-        <div class="grid grid-cols-3 gap-2 text-sm">
+        <div class="grid grid-cols-{% if strat.execution_rate > 0 %}3{% else %}2{% endif %} gap-2 text-sm">
             <div>
                 <span class="text-muted-foreground">Win Rate</span>
                 <div class="font-medium">{{ "%.1f"|format(strat.win_rate) }}%</div>
@@ -17,10 +17,12 @@
                 <span class="text-muted-foreground">Trades</span>
                 <div class="font-medium">{{ strat.total_trades }}</div>
             </div>
+            {% if strat.execution_rate > 0 %}
             <div>
                 <span class="text-muted-foreground">Exec Rate</span>
                 <div class="font-medium">{{ "%.1f"|format(strat.execution_rate) }}%</div>
             </div>
+            {% endif %}
         </div>
         <!-- Win rate bar -->
         <div class="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
