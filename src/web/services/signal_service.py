@@ -142,6 +142,14 @@ class SignalService:
 
     def _signal_to_dict(self, signal: Signal) -> Dict[str, Any]:
         """Convert Signal model to dictionary."""
+        # Determine execution status
+        if signal.executed:
+            exec_status = "executed"
+        elif signal.execution_notes:
+            exec_status = "rejected"
+        else:
+            exec_status = "pending"
+
         return {
             "id": signal.id,
             "symbol": signal.symbol,
@@ -150,6 +158,8 @@ class SignalService:
             "signal_type": signal.signal_type.value if signal.signal_type else None,
             "confidence": round(float(signal.confidence), 2) if signal.confidence else 0,
             "executed": signal.executed,
+            "execution_status": exec_status,
+            "rejection_reason": signal.execution_notes if not signal.executed else None,
             "execution_time": signal.execution_time.isoformat() if signal.execution_time else None,
             "data_snapshot": signal.data_snapshot,
         }

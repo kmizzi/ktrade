@@ -1,5 +1,5 @@
-{% macro render(title, value, delta=None, delta_type=None, icon=None, subtitle=None) %}
-<div class="rounded-lg border border-border bg-card p-4">
+{% macro render(title, value, delta=None, delta_type=None, icon=None, subtitle=None, highlight=False) %}
+<div class="rounded-lg border border-border p-4 {% if highlight and delta_type == 'positive' %}bg-profit/5 border-profit/20{% elif highlight and delta_type == 'negative' %}bg-loss/5 border-loss/20{% else %}bg-card{% endif %}">
     <div class="flex items-center justify-between">
         <span class="text-sm font-medium text-muted-foreground">{{ title }}</span>
         {% if icon %}
@@ -7,7 +7,7 @@
         {% endif %}
     </div>
     <div class="mt-2">
-        <span class="text-2xl font-bold">{{ value }}</span>
+        <span class="text-2xl font-bold {% if highlight and delta_type == 'positive' %}text-profit{% elif highlight and delta_type == 'negative' %}text-loss{% endif %}">{{ value }}</span>
         {% if delta is not none %}
         <span class="ml-2 text-sm {% if delta_type == 'positive' %}text-profit{% elif delta_type == 'negative' %}text-loss{% else %}text-muted-foreground{% endif %}">
             {% if delta_type == 'positive' %}+{% endif %}{{ delta }}

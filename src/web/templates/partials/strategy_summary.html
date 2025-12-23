@@ -1,3 +1,5 @@
+{% set has_bot_strategies = strategies|selectattr('execution_rate', '>', 0)|list|length > 0 %}
+
 {% if strategies %}
 <div class="space-y-3">
     {% for strat in strategies %}
@@ -31,6 +33,12 @@
         </div>
     </div>
     {% endfor %}
+
+    {% if not has_bot_strategies %}
+    <div class="text-xs text-muted-foreground text-center pt-2 border-t border-border mt-3">
+        Only showing imported trades. Bot strategies will appear here once they execute trades.
+    </div>
+    {% endif %}
 </div>
 {% else %}
 <div class="text-center py-8 text-muted-foreground">

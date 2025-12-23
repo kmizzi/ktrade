@@ -24,8 +24,9 @@
 
 {{ metric_card(
     title="Day's P&L",
-    value="${:,.2f}".format(daily_pnl|abs),
+    value=("+" if daily_pnl > 0 else "") ~ "${:,.2f}".format(daily_pnl),
     delta="{:.2f}%".format(daily_pnl_pct|abs) if daily_pnl_pct else None,
     delta_type="positive" if daily_pnl > 0 else "negative" if daily_pnl < 0 else None,
-    icon='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>'
+    icon='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>',
+    highlight=True
 ) }}

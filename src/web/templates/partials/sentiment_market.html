@@ -5,16 +5,19 @@
     'unknown': 'text-muted-foreground',
 } %}
 
+{% set has_data = sentiment.articles_count is defined and sentiment.articles_count > 0 %}
+
+{% if has_data or wsb_trending %}
 <div class="space-y-4">
     <!-- Overall sentiment -->
     <div class="flex items-center justify-between">
         <span class="text-muted-foreground">Market Mood</span>
         <span class="text-lg font-bold {{ sentiment_colors.get(sentiment.sentiment, 'text-muted-foreground') }}">
-            {{ sentiment.sentiment|upper if sentiment.sentiment else 'UNKNOWN' }}
+            {{ sentiment.sentiment|upper if sentiment.sentiment else 'NEUTRAL' }}
         </span>
     </div>
 
-    {% if sentiment.score is defined %}
+    {% if sentiment.score is defined and has_data %}
     <div>
         <div class="flex justify-between text-sm mb-1">
             <span class="text-muted-foreground">Sentiment Score</span>
@@ -27,25 +30,15 @@
     </div>
     {% endif %}
 
-    {% if sentiment.articles_count is defined and sentiment.articles_count > 0 %}
+    {% if has_data %}
     <div class="text-sm text-muted-foreground">
         Based on {{ sentiment.articles_count }} Reddit mentions
-    </div>
-    {% elif sentiment.message %}
-    <div class="text-sm text-muted-foreground">
-        {{ sentiment.message }}
-    </div>
-    {% endif %}
-
-    {% if sentiment.error %}
-    <div class="text-sm text-loss">
-        Error: {{ sentiment.error }}
     </div>
     {% endif %}
 
     <!-- WSB Trending -->
     {% if wsb_trending %}
-    <div class="border-t border-border pt-4 mt-4">
+    <div class="{% if has_data %}border-t border-border pt-4 mt-4{% endif %}">
         <h4 class="text-sm font-medium mb-2">WSB Trending</h4>
         <div class="flex flex-wrap gap-2">
             {% for stock in wsb_trending[:5] %}
@@ -57,3 +50,13 @@
     </div>
     {% endif %}
 </div>
+{% else %}
+<!-- No sentiment data - show minimal placeholder -->
+<div class="text-center py-6 text-muted-foreground">
+    <svg class="mx-auto h-8 w-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+    </svg>
+    <p class="text-sm">Reddit sentiment unavailable</p>
+    <p class="text-xs mt-1 opacity-60">Configure REDDIT_CLIENT_ID to enable</p>
+</div>
+{% endif %}

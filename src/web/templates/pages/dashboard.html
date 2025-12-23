@@ -79,7 +79,10 @@
         <section class="rounded-lg border border-border bg-card">
             <div class="border-b border-border p-4">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-semibold">Recent Signals</h2>
+                    <div>
+                        <h2 class="text-lg font-semibold">Recent Signals</h2>
+                        <p class="text-xs text-muted-foreground">Last 24 hours</p>
+                    </div>
                     <div class="flex gap-2">
                         <button
                             hx-post="/api/v1/signals/generate"
@@ -109,7 +112,10 @@
         <section class="rounded-lg border border-border bg-card">
             <div class="border-b border-border p-4">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-semibold">Recent Trades</h2>
+                    <div>
+                        <h2 class="text-lg font-semibold">Recent Trades</h2>
+                        <p class="text-xs text-muted-foreground">Latest activity</p>
+                    </div>
                     <a href="/trades" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
                 </div>
             </div>

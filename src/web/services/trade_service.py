@@ -42,15 +42,51 @@ class TradeService:
 
         return [self._trade_to_dict(t) for t in trades]
 
-    def get_recent_trades(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get most recent trades."""
+    def get_recent_trades(self, limit: int = 10, group_fills: bool = True) -> List[Dict[str, Any]]:
+        """Get most recent trades, optionally grouping fills from same order."""
+        # Fetch more trades to allow for grouping
         trades = (
             self.db.query(Trade)
             .order_by(desc(Trade.filled_at))
-            .limit(limit)
+            .limit(limit * 3 if group_fills else limit)
             .all()
         )
-        return [self._trade_to_dict(t) for t in trades]
+
+        if not group_fills:
+            return [self._trade_to_dict(t) for t in trades[:limit]]
+
+        # Group trades by symbol, side, price, and time window (same minute)
+        grouped = []
+        seen_keys = set()
+
+        for trade in trades:
+            # Create grouping key: symbol + side + price + minute
+            time_key = trade.filled_at.strftime("%Y-%m-%d %H:%M") if trade.filled_at else ""
+            group_key = f"{trade.symbol}|{trade.side.value if trade.side else ''}|{float(trade.price):.2f}|{time_key}"
+
+            if group_key in seen_keys:
+                # Find existing group and add to it
+                for g in grouped:
+                    if g.get("_group_key") == group_key:
+                        g["quantity"] += float(trade.quantity) if trade.quantity else 0
+                        g["total_value"] += float(trade.quantity * trade.price) if trade.quantity and trade.price else 0
+                        g["fill_count"] += 1
+                        break
+            else:
+                seen_keys.add(group_key)
+                trade_dict = self._trade_to_dict(trade)
+                trade_dict["_group_key"] = group_key
+                trade_dict["fill_count"] = 1
+                grouped.append(trade_dict)
+
+            if len(grouped) >= limit:
+                break
+
+        # Remove internal group key
+        for g in grouped:
+            g.pop("_group_key", None)
+
+        return grouped[:limit]
 
     def get_trades_by_strategy(self) -> Dict[str, List[Dict[str, Any]]]:
         """Get trades grouped by strategy."""

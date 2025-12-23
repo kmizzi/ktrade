@@ -173,23 +173,30 @@ class PortfolioService:
         """Get current open positions with live prices."""
         try:
             positions = alpaca_client.get_positions()
+            account = alpaca_client.get_account()
+            portfolio_value = float(account.get("equity", 0))
 
-            return [
-                {
+            result = []
+            for p in positions:
+                market_value = float(p.get("market_value", 0))
+                position_pct = (market_value / portfolio_value * 100) if portfolio_value > 0 else 0
+
+                result.append({
                     "symbol": p.get("symbol"),
                     "quantity": float(p.get("qty", 0)),
                     "entry_price": float(p.get("avg_entry_price", 0)),
                     "current_price": float(p.get("current_price", 0)),
-                    "market_value": float(p.get("market_value", 0)),
+                    "market_value": market_value,
+                    "position_pct": round(position_pct, 1),  # Position size as % of portfolio
                     # All-time P&L (since position opened)
                     "pnl": float(p.get("unrealized_pl", 0)),
                     "pnl_pct": float(p.get("unrealized_plpc", 0)) * 100,
                     # Today's P&L (intraday change)
                     "day_pnl": float(p.get("unrealized_intraday_pl", 0)),
                     "day_pnl_pct": float(p.get("unrealized_intraday_plpc", 0)) * 100,
-                }
-                for p in positions
-            ]
+                })
+
+            return result
         except Exception as e:
             return []
 
