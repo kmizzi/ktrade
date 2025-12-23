@@ -19,7 +19,7 @@ class SentimentService:
         try:
             from src.data.sentiment_providers import news_provider
 
-            sentiment = news_provider.get_market_mood()
+            sentiment = news_provider.get_market_sentiment()
             return {
                 "sentiment": sentiment.get("sentiment", "neutral"),
                 "score": sentiment.get("score", 0),
@@ -57,8 +57,8 @@ class SentimentService:
         try:
             from src.data.sentiment_providers import news_provider
 
-            news = news_provider.get_recent_news()
-            return news[:20]  # Limit to 20 articles
+            news = news_provider.get_latest_headlines()
+            return news[:20] if news else []
         except Exception as e:
             return []
 

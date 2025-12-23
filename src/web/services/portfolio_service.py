@@ -94,7 +94,7 @@ class PortfolioService:
         except Exception as e:
             return {"error": str(e)}
 
-    def get_equity_curve(self) -> List[Dict[str, Any]]:
+    def get_equity_curve(self) -> Dict[str, Any]:
         """Get equity curve data for charting."""
         try:
             snapshots = (
@@ -104,16 +104,15 @@ class PortfolioService:
                 .all()
             )
 
-            return [
-                {
-                    "timestamp": s.timestamp.isoformat(),
-                    "value": float(s.total_value) if s.total_value else 0,
-                    "cash": float(s.cash) if s.cash else 0,
-                }
-                for s in snapshots
-            ]
+            labels = [s.timestamp.strftime("%m/%d") for s in snapshots]
+            values = [float(s.total_value) if s.total_value else 0 for s in snapshots]
+
+            return {
+                "labels": labels,
+                "values": values,
+            }
         except Exception as e:
-            return []
+            return {"labels": [], "values": [], "error": str(e)}
 
     def get_snapshots(self, limit: int = 30) -> List[Dict[str, Any]]:
         """Get historical portfolio snapshots."""

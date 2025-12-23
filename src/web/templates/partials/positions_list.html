@@ -5,18 +5,15 @@
         <div class="flex items-center gap-3">
             <div>
                 <span class="font-medium">{{ pos.symbol }}</span>
-                <span class="ml-2 text-xs {% if pos.side == 'long' %}text-profit{% else %}text-loss{% endif %}">
-                    {{ pos.side|upper }}
-                </span>
             </div>
-            <span class="text-sm text-muted-foreground">{{ pos.quantity }} shares</span>
+            <span class="text-sm text-muted-foreground">{{ pos.quantity }} @ ${{ "%.2f"|format(pos.entry_price) }}</span>
         </div>
         <div class="text-right">
-            <div class="font-medium {% if pos.unrealized_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
-                {% if pos.unrealized_pnl >= 0 %}+{% endif %}${{ "%.2f"|format(pos.unrealized_pnl) }}
+            <div class="font-medium {% if pos.pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                {% if pos.pnl >= 0 %}+{% endif %}${{ "%.2f"|format(pos.pnl) }}
             </div>
             <div class="text-xs text-muted-foreground">
-                {% if pos.unrealized_pnl_pct >= 0 %}+{% endif %}{{ "%.2f"|format(pos.unrealized_pnl_pct) }}%
+                {% if pos.pnl_pct >= 0 %}+{% endif %}{{ "%.2f"|format(pos.pnl_pct) }}%
             </div>
         </div>
     </div>

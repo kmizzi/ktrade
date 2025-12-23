@@ -19,9 +19,16 @@ class MarketService:
         """Get watchlist symbols from settings."""
         symbols = []
         if settings.watchlist_stocks:
-            symbols.extend(settings.watchlist_stocks)
+            # Handle both list and comma-separated string formats
+            if isinstance(settings.watchlist_stocks, str):
+                symbols.extend([s.strip() for s in settings.watchlist_stocks.split(",") if s.strip()])
+            else:
+                symbols.extend(settings.watchlist_stocks)
         if settings.watchlist_crypto:
-            symbols.extend(settings.watchlist_crypto)
+            if isinstance(settings.watchlist_crypto, str):
+                symbols.extend([s.strip() for s in settings.watchlist_crypto.split(",") if s.strip()])
+            else:
+                symbols.extend(settings.watchlist_crypto)
         return symbols
 
     def get_watchlist(self) -> List[Dict[str, Any]]:

@@ -90,7 +90,7 @@ async def positions_partial(request: Request, db: Session = Depends(get_db_sessi
     """Get open positions partial for HTMX."""
     try:
         service = PortfolioService(db)
-        positions = service.get_positions()
+        positions = service.get_open_positions()
         return templates.TemplateResponse(
             "partials/positions_list.html",
             {"request": request, "positions": positions}
