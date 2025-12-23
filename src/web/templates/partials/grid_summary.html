@@ -4,26 +4,26 @@
     title="Active Grids",
     value=summary.active_grids,
     subtitle=summary.total_grids ~ " total configured",
-    icon="grid"
+    icon='<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>'
 ) }}
 
 {{ metric_card(
     title="Total Invested",
     value="${:,.2f}".format(summary.total_invested),
     subtitle="Across all grids",
-    icon="wallet"
+    icon='<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>'
 ) }}
 
 {{ metric_card(
     title="Realized Profit",
     value="${:,.2f}".format(summary.realized_profit),
     delta_type="positive" if summary.realized_profit >= 0 else "negative",
-    icon="trending"
+    icon='<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>'
 ) }}
 
 {{ metric_card(
     title="Open Orders",
     value=summary.total_open_orders,
     subtitle="Buy & sell orders",
-    icon="orders"
+    icon='<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>'
 ) }}
