@@ -56,8 +56,8 @@
     <!-- Main content grid -->
     <div class="grid gap-6 lg:grid-cols-2">
         <!-- Open Positions -->
-        <section class="rounded-lg border border-border bg-card">
-            <div class="border-b border-border p-4">
+        <section class="rounded-lg border border-border bg-card flex flex-col" style="height: 400px;">
+            <div class="border-b border-border p-4 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-semibold">Open Positions</h2>
                     <a href="/positions" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
@@ -66,7 +66,7 @@
             <div hx-get="/partials/positions/open"
                  hx-trigger="load, every 30s"
                  hx-swap="innerHTML"
-                 class="p-4">
+                 class="p-4 overflow-y-auto flex-1">
                 <div class="space-y-2">
                     {% for _ in range(3) %}
                     <div class="h-12 skeleton rounded"></div>
@@ -76,8 +76,8 @@
         </section>
 
         <!-- Recent Signals -->
-        <section class="rounded-lg border border-border bg-card">
-            <div class="border-b border-border p-4">
+        <section class="rounded-lg border border-border bg-card flex flex-col" style="height: 400px;">
+            <div class="border-b border-border p-4 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <div>
                         <h2 class="text-lg font-semibold">Recent Signals</h2>
@@ -99,7 +99,7 @@
                  hx-get="/partials/signals/recent"
                  hx-trigger="load, every 30s"
                  hx-swap="innerHTML"
-                 class="p-4">
+                 class="p-4 overflow-y-auto flex-1">
                 <div class="space-y-2">
                     {% for _ in range(3) %}
                     <div class="h-12 skeleton rounded"></div>
@@ -109,8 +109,8 @@
         </section>
 
         <!-- Recent Trades -->
-        <section class="rounded-lg border border-border bg-card">
-            <div class="border-b border-border p-4">
+        <section class="rounded-lg border border-border bg-card flex flex-col" style="height: 400px;">
+            <div class="border-b border-border p-4 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <div>
                         <h2 class="text-lg font-semibold">Recent Trades</h2>
@@ -122,7 +122,7 @@
             <div hx-get="/partials/trades/recent"
                  hx-trigger="load, every 30s"
                  hx-swap="innerHTML"
-                 class="p-4">
+                 class="p-4 overflow-y-auto flex-1">
                 <div class="space-y-2">
                     {% for _ in range(3) %}
                     <div class="h-12 skeleton rounded"></div>
@@ -132,8 +132,8 @@
         </section>
 
         <!-- Strategy Performance -->
-        <section class="rounded-lg border border-border bg-card">
-            <div class="border-b border-border p-4">
+        <section class="rounded-lg border border-border bg-card flex flex-col" style="height: 400px;">
+            <div class="border-b border-border p-4 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <div>
                         <h2 class="text-lg font-semibold">Strategy Performance</h2>
@@ -145,7 +145,7 @@
             <div hx-get="/partials/strategies/summary"
                  hx-trigger="load"
                  hx-swap="innerHTML"
-                 class="p-4">
+                 class="p-4 overflow-y-auto flex-1">
                 <div class="space-y-2">
                     {% for _ in range(3) %}
                     <div class="h-12 skeleton rounded"></div>
@@ -173,8 +173,8 @@
     <!-- Watchlist & Market Sentiment -->
     <div class="grid gap-6 lg:grid-cols-2">
         <!-- Watchlist -->
-        <section class="rounded-lg border border-border bg-card">
-            <div class="border-b border-border p-4">
+        <section class="rounded-lg border border-border bg-card flex flex-col" style="height: 320px;">
+            <div class="border-b border-border p-4 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-semibold">Watchlist</h2>
                     <button
@@ -190,7 +190,7 @@
                  hx-get="/partials/watchlist/data"
                  hx-trigger="load, every 60s"
                  hx-swap="innerHTML"
-                 class="p-4 max-h-80 overflow-y-auto">
+                 class="p-4 overflow-y-auto flex-1">
                 <div class="space-y-2">
                     {% for _ in range(5) %}
                     <div class="h-10 skeleton rounded"></div>
@@ -200,14 +200,14 @@
         </section>
 
         <!-- Market Sentiment -->
-        <section class="rounded-lg border border-border bg-card">
-            <div class="border-b border-border p-4">
+        <section class="rounded-lg border border-border bg-card flex flex-col" style="height: 320px;">
+            <div class="border-b border-border p-4 flex-shrink-0">
                 <h2 class="text-lg font-semibold">Market Sentiment</h2>
             </div>
             <div hx-get="/partials/sentiment/market"
                  hx-trigger="load"
                  hx-swap="innerHTML"
-                 class="p-4">
+                 class="p-4 overflow-y-auto flex-1">
                 <div class="space-y-4">
                     <div class="h-16 skeleton rounded"></div>
                     <div class="h-32 skeleton rounded"></div>
