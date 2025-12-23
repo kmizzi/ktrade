@@ -224,6 +224,7 @@ class GridService:
     def get_current_prices(self) -> Dict[str, float]:
         """Get current prices for grid symbols."""
         from src.api.alpaca_client import alpaca_client
+        from datetime import datetime, timedelta
 
         prices = {}
         config = self._get_grid_config()
@@ -235,8 +236,12 @@ class GridService:
             try:
                 # Use get_bars for crypto symbols (contains '/') since get_latest_quote only works for stocks
                 if "/" in symbol:
-                    bars = alpaca_client.get_bars(symbol, timeframe="1Min", limit=1)
+                    # Get bars from the last hour to ensure we get recent data
+                    end = datetime.now()
+                    start = end - timedelta(hours=1)
+                    bars = alpaca_client.get_bars(symbol, timeframe="1Min", start=start, end=end, limit=10)
                     if bars:
+                        # Get the most recent bar (last in the list)
                         prices[symbol] = float(bars[-1].get("close", 0))
                 else:
                     quote = alpaca_client.get_latest_quote(symbol)
