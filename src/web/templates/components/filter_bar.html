@@ -1,0 +1,135 @@
+{#
+Filter Bar Component
+A reusable filter bar with search, dropdown filters, and sort controls.
+
+Usage:
+{{ filter_bar(
+    id="trades-filter",
+    search_placeholder="Search symbols...",
+    filters=[
+        {"name": "side", "label": "Side", "options": [{"value": "", "label": "All"}, {"value": "buy", "label": "Buy"}, {"value": "sell", "label": "Sell"}]},
+        {"name": "status", "label": "Status", "options": [...]}
+    ],
+    sort_options=[
+        {"value": "time_desc", "label": "Newest First"},
+        {"value": "time_asc", "label": "Oldest First"},
+        {"value": "value_desc", "label": "Highest Value"},
+    ],
+    htmx_target="#results-container",
+    htmx_url="/partials/trades"
+) }}
+#}
+
+{% macro render(id, search_placeholder="Search...", filters=[], sort_options=[], htmx_target=None, htmx_url=None, show_search=true) %}
+<div class="flex flex-col sm:flex-row gap-3 p-4 bg-muted/30 rounded-lg border border-border"
+     x-data="{
+         search: '',
+         filters: {},
+         sort: '{{ sort_options[0].value if sort_options else '' }}',
+         buildQuery() {
+             const params = new URLSearchParams();
+             if (this.search) params.set('q', this.search);
+             Object.entries(this.filters).forEach(([k, v]) => { if (v) params.set(k, v); });
+             if (this.sort) params.set('sort', this.sort);
+             return params.toString();
+         }
+     }"
+     id="{{ id }}">
+
+    <!-- Search Input -->
+    {% if show_search %}
+    <div class="relative flex-1 min-w-[200px]">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input type="text"
+               x-model="search"
+               placeholder="{{ search_placeholder }}"
+               class="w-full pl-10 pr-4 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+               {% if htmx_target and htmx_url %}
+               @input.debounce.300ms="$dispatch('filter-change', { query: buildQuery() })"
+               {% endif %}
+        />
+    </div>
+    {% endif %}
+
+    <!-- Filter Dropdowns -->
+    <div class="flex flex-wrap items-center gap-2">
+        {% for filter in filters %}
+        <div class="relative">
+            <select x-model="filters.{{ filter.name }}"
+                    class="appearance-none pl-3 pr-8 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
+                    {% if htmx_target and htmx_url %}
+                    @change="$dispatch('filter-change', { query: buildQuery() })"
+                    {% endif %}>
+                {% for option in filter.options %}
+                <option value="{{ option.value }}">{{ option.label }}</option>
+                {% endfor %}
+            </select>
+            <svg class="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </div>
+        {% endfor %}
+
+        <!-- Sort Dropdown -->
+        {% if sort_options %}
+        <div class="relative ml-auto">
+            <select x-model="sort"
+                    class="appearance-none pl-3 pr-8 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
+                    {% if htmx_target and htmx_url %}
+                    @change="$dispatch('filter-change', { query: buildQuery() })"
+                    {% endif %}>
+                {% for option in sort_options %}
+                <option value="{{ option.value }}">{{ option.label }}</option>
+                {% endfor %}
+            </select>
+            <svg class="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </div>
+        {% endif %}
+
+        <!-- Clear Filters Button -->
+        <button type="button"
+                @click="search = ''; filters = {}; sort = '{{ sort_options[0].value if sort_options else '' }}'; $dispatch('filter-change', { query: buildQuery() })"
+                class="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                title="Clear filters">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+{% if htmx_target and htmx_url %}
+<!-- HTMX listener for filter changes -->
+<div x-on:filter-change.window="
+    const url = '{{ htmx_url }}' + ($event.detail.query ? '?' + $event.detail.query : '');
+    htmx.ajax('GET', url, '{{ htmx_target }}');
+"></div>
+{% endif %}
+{% endmacro %}
+
+
+{# Compact inline filter for smaller spaces #}
+{% macro inline(id, filters=[], htmx_target=None, htmx_url=None) %}
+<div class="flex items-center gap-2 text-sm"
+     x-data="{ filters: {} }"
+     id="{{ id }}">
+    {% for filter in filters %}
+    <select x-model="filters.{{ filter.name }}"
+            class="appearance-none px-2 py-1 text-xs bg-muted border-0 rounded focus:outline-none focus:ring-1 focus:ring-primary/50 cursor-pointer"
+            {% if htmx_target and htmx_url %}
+            hx-get="{{ htmx_url }}"
+            hx-target="{{ htmx_target }}"
+            hx-trigger="change"
+            hx-include="[id='{{ id }}'] select"
+            {% endif %}>
+        {% for option in filter.options %}
+        <option value="{{ option.value }}">{{ option.label }}</option>
+        {% endfor %}
+    </select>
+    {% endfor %}
+</div>
+{% endmacro %}

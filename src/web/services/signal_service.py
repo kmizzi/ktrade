@@ -23,25 +23,78 @@ class SignalService:
         limit: int = 50,
         offset: int = 0,
         strategy: Optional[str] = None,
-        executed: Optional[bool] = None
+        executed: Optional[bool] = None,
+        signal_type: Optional[str] = None,
+        status: Optional[str] = None,
+        symbol: Optional[str] = None,
+        sort: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Get signals with optional filters."""
+        """Get signals with optional filters and sorting."""
+        from sqlalchemy import asc
+
         query = self.db.query(DBSignal)
 
+        # Apply filters
         if strategy:
             query = query.filter(DBSignal.strategy == strategy)
         if executed is not None:
             query = query.filter(DBSignal.executed == executed)
+        if signal_type:
+            query = query.filter(DBSignal.signal_type == SignalType(signal_type))
+        if status == "executed":
+            query = query.filter(DBSignal.executed == True)
+        elif status == "rejected":
+            query = query.filter(DBSignal.executed == False, DBSignal.execution_notes.isnot(None))
+        elif status == "pending":
+            query = query.filter(DBSignal.executed == False, DBSignal.execution_notes.is_(None))
+        if symbol:
+            query = query.filter(DBSignal.symbol == symbol)
+        if search:
+            query = query.filter(DBSignal.symbol.ilike(f"%{search}%"))
+
+        # Apply sorting
+        sort_map = {
+            "time_desc": desc(DBSignal.timestamp),
+            "time_asc": asc(DBSignal.timestamp),
+            "symbol_asc": asc(DBSignal.symbol),
+            "symbol_desc": desc(DBSignal.symbol),
+            "confidence_desc": desc(DBSignal.confidence),
+            "confidence_asc": asc(DBSignal.confidence),
+        }
+        order_by = sort_map.get(sort, desc(DBSignal.timestamp))
 
         signals = (
             query
-            .order_by(desc(DBSignal.timestamp))
+            .order_by(order_by)
             .offset(offset)
             .limit(limit)
             .all()
         )
 
         return [self._signal_to_dict(s) for s in signals]
+
+    def get_unique_symbols(self) -> List[str]:
+        """Get list of unique signaled symbols."""
+        symbols = (
+            self.db.query(DBSignal.symbol)
+            .distinct()
+            .filter(DBSignal.symbol.isnot(None))
+            .order_by(DBSignal.symbol)
+            .all()
+        )
+        return [s[0] for s in symbols]
+
+    def get_unique_strategies(self) -> List[str]:
+        """Get list of unique strategies."""
+        strategies = (
+            self.db.query(DBSignal.strategy)
+            .distinct()
+            .filter(DBSignal.strategy.isnot(None))
+            .order_by(DBSignal.strategy)
+            .all()
+        )
+        return [s[0] for s in strategies]
 
     def get_recent_signals(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get most recent signals."""

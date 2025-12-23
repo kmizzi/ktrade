@@ -4,16 +4,18 @@ Trades API routes.
 
 from fastapi import APIRouter, Depends, Request, Query
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from pathlib import Path
 from typing import Optional
 
 from src.web.dependencies import get_db_session
 from src.web.services.trade_service import TradeService
 
 router = APIRouter()
-templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
+
+
+def get_templates():
+    from src.web.app import templates
+    return templates
 
 
 @router.get("/")
@@ -22,25 +24,57 @@ async def get_trades(
     offset: int = 0,
     strategy: Optional[str] = None,
     symbol: Optional[str] = None,
+    side: Optional[str] = None,
+    sort: Optional[str] = None,
+    q: Optional[str] = None,
     db: Session = Depends(get_db_session)
 ):
     """Get all trades with optional filters."""
     service = TradeService(db)
-    return service.get_trades(limit=limit, offset=offset, strategy=strategy, symbol=symbol)
+    return service.get_trades(
+        limit=limit,
+        offset=offset,
+        strategy=strategy,
+        symbol=symbol,
+        side=side,
+        sort=sort,
+        search=q
+    )
 
 
 @router.get("/recent", response_class=HTMLResponse)
 async def get_recent_trades(
     request: Request,
-    limit: int = Query(10, le=50),
+    limit: int = Query(50, le=100),
+    side: Optional[str] = None,
+    symbol: Optional[str] = None,
+    sort: Optional[str] = None,
+    q: Optional[str] = None,
     db: Session = Depends(get_db_session)
 ):
-    """Get recent trades partial for HTMX."""
+    """Get recent trades partial for HTMX with filtering."""
     service = TradeService(db)
-    trades = service.get_recent_trades(limit=limit)
-    return templates.TemplateResponse(
-        "partials/trades_table.html",
-        {"request": request, "trades": trades}
+    trades = service.get_trades(
+        limit=limit,
+        side=side,
+        symbol=symbol,
+        sort=sort,
+        search=q
+    )
+    symbols = service.get_unique_symbols()
+    return get_templates().TemplateResponse(
+        "partials/trades_list.html",
+        {
+            "request": request,
+            "trades": trades,
+            "symbols": symbols,
+            "current_filters": {
+                "side": side,
+                "symbol": symbol,
+                "sort": sort or "time_desc",
+                "q": q
+            }
+        }
     )
 
 

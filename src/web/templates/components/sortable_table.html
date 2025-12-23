@@ -1,0 +1,218 @@
+{#
+Sortable Table Component
+A reusable table with client-side sorting and optional pagination.
+
+Usage:
+{% call sortable_table(
+    id="trades-table",
+    columns=[
+        {"key": "symbol", "label": "Symbol", "sortable": true},
+        {"key": "side", "label": "Side", "sortable": true},
+        {"key": "price", "label": "Price", "sortable": true, "align": "right", "type": "number"},
+        {"key": "time", "label": "Time", "sortable": true, "type": "date"}
+    ],
+    default_sort="time",
+    default_order="desc",
+    page_size=20
+) %}
+    <!-- Row template goes here, rendered for each item -->
+{% endcall %}
+#}
+
+{% macro render(id, columns, rows_data="[]", default_sort=None, default_order="asc", page_size=0, empty_message="No data available", row_class="") %}
+<div class="rounded-lg border border-border overflow-hidden"
+     x-data="{
+         rows: {{ rows_data | safe }},
+         sortKey: '{{ default_sort or columns[0].key }}',
+         sortOrder: '{{ default_order }}',
+         currentPage: 1,
+         pageSize: {{ page_size or 0 }},
+         searchTerm: '',
+
+         get filteredRows() {
+             if (!this.searchTerm) return this.rows;
+             const term = this.searchTerm.toLowerCase();
+             return this.rows.filter(row => {
+                 return Object.values(row).some(val =>
+                     String(val).toLowerCase().includes(term)
+                 );
+             });
+         },
+
+         get sortedRows() {
+             return [...this.filteredRows].sort((a, b) => {
+                 let aVal = a[this.sortKey];
+                 let bVal = b[this.sortKey];
+
+                 // Handle nulls
+                 if (aVal == null) return 1;
+                 if (bVal == null) return -1;
+
+                 // Numeric comparison
+                 if (typeof aVal === 'number' && typeof bVal === 'number') {
+                     return this.sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+                 }
+
+                 // String comparison
+                 aVal = String(aVal).toLowerCase();
+                 bVal = String(bVal).toLowerCase();
+                 if (aVal < bVal) return this.sortOrder === 'asc' ? -1 : 1;
+                 if (aVal > bVal) return this.sortOrder === 'asc' ? 1 : -1;
+                 return 0;
+             });
+         },
+
+         get paginatedRows() {
+             if (!this.pageSize) return this.sortedRows;
+             const start = (this.currentPage - 1) * this.pageSize;
+             return this.sortedRows.slice(start, start + this.pageSize);
+         },
+
+         get totalPages() {
+             if (!this.pageSize) return 1;
+             return Math.ceil(this.sortedRows.length / this.pageSize);
+         },
+
+         sort(key) {
+             if (this.sortKey === key) {
+                 this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+             } else {
+                 this.sortKey = key;
+                 this.sortOrder = 'asc';
+             }
+             this.currentPage = 1;
+         },
+
+         goToPage(page) {
+             if (page >= 1 && page <= this.totalPages) {
+                 this.currentPage = page;
+             }
+         }
+     }"
+     id="{{ id }}">
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-muted/50">
+                <tr>
+                    {% for col in columns %}
+                    <th class="px-4 py-3 text-left font-medium text-muted-foreground
+                               {% if col.align == 'right' %}text-right{% elif col.align == 'center' %}text-center{% endif %}
+                               {% if col.sortable %}cursor-pointer hover:text-foreground select-none{% endif %}"
+                        {% if col.sortable %}@click="sort('{{ col.key }}')"{% endif %}>
+                        <span class="inline-flex items-center gap-1">
+                            {{ col.label }}
+                            {% if col.sortable %}
+                            <span class="opacity-50" x-show="sortKey !== '{{ col.key }}'">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+                                </svg>
+                            </span>
+                            <span x-show="sortKey === '{{ col.key }}' && sortOrder === 'asc'" class="text-primary">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                                </svg>
+                            </span>
+                            <span x-show="sortKey === '{{ col.key }}' && sortOrder === 'desc'" class="text-primary">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </span>
+                            {% endif %}
+                        </span>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                <template x-if="paginatedRows.length === 0">
+                    <tr>
+                        <td colspan="{{ columns|length }}" class="px-4 py-8 text-center text-muted-foreground">
+                            {{ empty_message }}
+                        </td>
+                    </tr>
+                </template>
+                <template x-for="(row, index) in paginatedRows" :key="index">
+                    <tr class="hover:bg-muted/30 transition-colors {{ row_class }}">
+                        {% for col in columns %}
+                        <td class="px-4 py-3 {% if col.align == 'right' %}text-right{% elif col.align == 'center' %}text-center{% endif %}"
+                            x-text="row.{{ col.key }}"></td>
+                        {% endfor %}
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_size %}
+    <div class="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/30"
+         x-show="totalPages > 1">
+        <div class="text-sm text-muted-foreground">
+            Showing <span x-text="((currentPage - 1) * pageSize) + 1"></span> to
+            <span x-text="Math.min(currentPage * pageSize, sortedRows.length)"></span> of
+            <span x-text="sortedRows.length"></span> results
+        </div>
+        <div class="flex items-center gap-1">
+            <button @click="goToPage(1)" :disabled="currentPage === 1"
+                    class="p-1 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+            </button>
+            <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
+                    class="p-1 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <span class="px-3 py-1 text-sm">
+                Page <span x-text="currentPage"></span> of <span x-text="totalPages"></span>
+            </span>
+            <button @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages"
+                    class="p-1 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
+            <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages"
+                    class="p-1 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{% macro skeleton(columns=5, rows=5) %}
+<div class="rounded-lg border border-border overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-muted/50">
+                <tr>
+                    {% for _ in range(columns) %}
+                    <th class="px-4 py-3">
+                        <div class="h-4 w-20 skeleton rounded"></div>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% for _ in range(rows) %}
+                <tr>
+                    {% for _ in range(columns) %}
+                    <td class="px-4 py-3">
+                        <div class="h-4 w-24 skeleton rounded"></div>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endmacro %}

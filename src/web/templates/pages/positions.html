@@ -1,18 +1,146 @@
 {% extends "base.html" %}
 
 {% block title %}Positions - KTrade{% endblock %}
-{% block header %}Positions{% endblock %}
+{% block header %}Open Positions{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <div class="rounded-lg border border-border bg-card p-6"
-         hx-get="/partials/positions/open"
+<div class="space-y-4">
+    <!-- Filter Bar -->
+    <div class="flex flex-col sm:flex-row gap-3 p-4 bg-muted/30 rounded-lg border border-border"
+         x-data="{
+             search: '',
+             pnl_filter: '',
+             sort: 'pnl_desc',
+             buildUrl() {
+                 const params = new URLSearchParams();
+                 if (this.search) params.set('q', this.search);
+                 if (this.pnl_filter) params.set('pnl_filter', this.pnl_filter);
+                 if (this.sort) params.set('sort', this.sort);
+                 return '/partials/positions/open?' + params.toString();
+             },
+             refresh() {
+                 htmx.ajax('GET', this.buildUrl(), '#positions-container');
+             }
+         }">
+
+        <!-- Search Input -->
+        <div class="relative flex-1 min-w-[200px]">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input type="text"
+                   x-model="search"
+                   placeholder="Search positions..."
+                   class="w-full pl-10 pr-4 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                   @input.debounce.300ms="refresh()"
+            />
+        </div>
+
+        <!-- Filter Dropdowns -->
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- P&L Filter -->
+            <div class="relative">
+                <select x-model="pnl_filter"
+                        @change="refresh()"
+                        class="appearance-none pl-3 pr-8 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer">
+                    <option value="">All Positions</option>
+                    <option value="profit">Profitable</option>
+                    <option value="loss">In Loss</option>
+                </select>
+                <svg class="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+
+            <!-- Sort Dropdown -->
+            <div class="relative">
+                <select x-model="sort"
+                        @change="refresh()"
+                        class="appearance-none pl-3 pr-8 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer">
+                    <option value="pnl_desc">Highest P&L</option>
+                    <option value="pnl_asc">Lowest P&L</option>
+                    <option value="pnl_pct_desc">Highest P&L %</option>
+                    <option value="pnl_pct_asc">Lowest P&L %</option>
+                    <option value="value_desc">Highest Value</option>
+                    <option value="value_asc">Lowest Value</option>
+                    <option value="symbol_asc">Symbol A-Z</option>
+                </select>
+                <svg class="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+
+            <!-- Clear Filters Button -->
+            <button type="button"
+                    @click="search = ''; pnl_filter = ''; sort = 'pnl_desc'; refresh()"
+                    class="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors flex items-center gap-1"
+                    title="Clear filters">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- Positions Table -->
+    <div class="rounded-lg border border-border bg-card overflow-hidden">
+        <div id="positions-container"
+             hx-get="/partials/positions/open"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <!-- Loading skeleton -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-muted/50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Symbol</th>
+                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">Quantity</th>
+                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">Entry</th>
+                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">Current</th>
+                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">Market Value</th>
+                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">Today</th>
+                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">Total P&L</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        {% for _ in range(5) %}
+                        <tr>
+                            <td class="px-4 py-3"><div class="h-4 w-16 skeleton rounded"></div></td>
+                            <td class="px-4 py-3 text-right"><div class="h-4 w-12 skeleton rounded ml-auto"></div></td>
+                            <td class="px-4 py-3 text-right"><div class="h-4 w-16 skeleton rounded ml-auto"></div></td>
+                            <td class="px-4 py-3 text-right"><div class="h-4 w-16 skeleton rounded ml-auto"></div></td>
+                            <td class="px-4 py-3 text-right"><div class="h-4 w-20 skeleton rounded ml-auto"></div></td>
+                            <td class="px-4 py-3 text-right"><div class="h-4 w-16 skeleton rounded ml-auto"></div></td>
+                            <td class="px-4 py-3 text-right"><div class="h-4 w-20 skeleton rounded ml-auto"></div></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Position Summary Cards -->
+    <div class="grid gap-4 md:grid-cols-4"
+         hx-get="/partials/positions/summary"
          hx-trigger="load, every 30s"
          hx-swap="innerHTML">
-        <div class="space-y-2">
-            {% for _ in range(5) %}
-            <div class="h-12 skeleton rounded"></div>
-            {% endfor %}
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="text-sm text-muted-foreground">Total Positions</div>
+            <div class="text-2xl font-bold mt-1"><div class="h-8 w-8 skeleton rounded"></div></div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="text-sm text-muted-foreground">Total Value</div>
+            <div class="text-2xl font-bold mt-1"><div class="h-8 w-24 skeleton rounded"></div></div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="text-sm text-muted-foreground">Today's P&L</div>
+            <div class="text-2xl font-bold mt-1"><div class="h-8 w-20 skeleton rounded"></div></div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="text-sm text-muted-foreground">Total P&L</div>
+            <div class="text-2xl font-bold mt-1"><div class="h-8 w-20 skeleton rounded"></div></div>
         </div>
     </div>
 </div>

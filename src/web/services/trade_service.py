@@ -22,25 +22,59 @@ class TradeService:
         limit: int = 50,
         offset: int = 0,
         strategy: Optional[str] = None,
-        symbol: Optional[str] = None
+        symbol: Optional[str] = None,
+        side: Optional[str] = None,
+        sort: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Get trades with optional filters."""
+        """Get trades with optional filters and sorting."""
+        from sqlalchemy import asc
+
         query = self.db.query(Trade).join(Position, Trade.position_id == Position.id, isouter=True)
 
+        # Apply filters
         if strategy:
             query = query.filter(Position.strategy == strategy)
         if symbol:
             query = query.filter(Trade.symbol == symbol)
+        if side:
+            query = query.filter(Trade.side == TradeSide(side))
+        if search:
+            query = query.filter(Trade.symbol.ilike(f"%{search}%"))
+
+        # Apply sorting
+        sort_map = {
+            "time_desc": desc(Trade.filled_at),
+            "time_asc": asc(Trade.filled_at),
+            "symbol_asc": asc(Trade.symbol),
+            "symbol_desc": desc(Trade.symbol),
+            "value_desc": desc(Trade.quantity * Trade.price),
+            "value_asc": asc(Trade.quantity * Trade.price),
+            "price_desc": desc(Trade.price),
+            "price_asc": asc(Trade.price),
+        }
+        order_by = sort_map.get(sort, desc(Trade.filled_at))
 
         trades = (
             query
-            .order_by(desc(Trade.filled_at))
+            .order_by(order_by)
             .offset(offset)
             .limit(limit)
             .all()
         )
 
         return [self._trade_to_dict(t) for t in trades]
+
+    def get_unique_symbols(self) -> List[str]:
+        """Get list of unique traded symbols."""
+        symbols = (
+            self.db.query(Trade.symbol)
+            .distinct()
+            .filter(Trade.symbol.isnot(None))
+            .order_by(Trade.symbol)
+            .all()
+        )
+        return [s[0] for s in symbols]
 
     def get_recent_trades(self, limit: int = 10, group_fills: bool = True) -> List[Dict[str, Any]]:
         """Get most recent trades, optionally grouping fills from same order."""

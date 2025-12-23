@@ -4,16 +4,149 @@
 {% block header %}Trade History{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <div class="rounded-lg border border-border bg-card"
-         hx-get="/partials/trades/recent?limit=50"
-         hx-trigger="load"
-         hx-swap="innerHTML">
-        <div class="p-6">
-            <div class="space-y-2">
-                {% for _ in range(10) %}
-                <div class="h-12 skeleton rounded"></div>
-                {% endfor %}
+<div class="space-y-4">
+    <!-- Filter Bar -->
+    <div class="flex flex-col sm:flex-row gap-3 p-4 bg-muted/30 rounded-lg border border-border"
+         x-data="{
+             search: '',
+             side: '',
+             symbol: '',
+             sort: 'time_desc',
+             buildUrl() {
+                 const params = new URLSearchParams();
+                 if (this.search) params.set('q', this.search);
+                 if (this.side) params.set('side', this.side);
+                 if (this.symbol) params.set('symbol', this.symbol);
+                 if (this.sort) params.set('sort', this.sort);
+                 return '/api/v1/trades/recent?' + params.toString();
+             },
+             refresh() {
+                 htmx.ajax('GET', this.buildUrl(), '#trades-container');
+             }
+         }">
+
+        <!-- Search Input -->
+        <div class="relative flex-1 min-w-[200px]">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input type="text"
+                   x-model="search"
+                   placeholder="Search symbols..."
+                   class="w-full pl-10 pr-4 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                   @input.debounce.300ms="refresh()"
+            />
+        </div>
+
+        <!-- Filter Dropdowns -->
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Side Filter -->
+            <div class="relative">
+                <select x-model="side"
+                        @change="refresh()"
+                        class="appearance-none pl-3 pr-8 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer">
+                    <option value="">All Sides</option>
+                    <option value="buy">Buy</option>
+                    <option value="sell">Sell</option>
+                </select>
+                <svg class="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+
+            <!-- Sort Dropdown -->
+            <div class="relative">
+                <select x-model="sort"
+                        @change="refresh()"
+                        class="appearance-none pl-3 pr-8 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer">
+                    <option value="time_desc">Newest First</option>
+                    <option value="time_asc">Oldest First</option>
+                    <option value="value_desc">Highest Value</option>
+                    <option value="value_asc">Lowest Value</option>
+                    <option value="symbol_asc">Symbol A-Z</option>
+                    <option value="symbol_desc">Symbol Z-A</option>
+                </select>
+                <svg class="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+
+            <!-- Clear Filters Button -->
+            <button type="button"
+                    @click="search = ''; side = ''; symbol = ''; sort = 'time_desc'; refresh()"
+                    class="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors flex items-center gap-1"
+                    title="Clear filters">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- Trades Table -->
+    <div class="rounded-lg border border-border bg-card overflow-hidden">
+        <div id="trades-container"
+             hx-get="/api/v1/trades/recent?limit=50"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <!-- Loading skeleton -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-muted/50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Symbol</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Side</th>
+                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">Quantity</th>
+                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">Price</th>
+                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">Total Value</th>
+                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        {% for _ in range(10) %}
+                        <tr>
+                            <td class="px-4 py-3"><div class="h-4 w-16 skeleton rounded"></div></td>
+                            <td class="px-4 py-3"><div class="h-4 w-12 skeleton rounded"></div></td>
+                            <td class="px-4 py-3 text-right"><div class="h-4 w-16 skeleton rounded ml-auto"></div></td>
+                            <td class="px-4 py-3 text-right"><div class="h-4 w-20 skeleton rounded ml-auto"></div></td>
+                            <td class="px-4 py-3 text-right"><div class="h-4 w-20 skeleton rounded ml-auto"></div></td>
+                            <td class="px-4 py-3 text-right"><div class="h-4 w-24 skeleton rounded ml-auto"></div></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trade Stats Summary -->
+    <div class="grid gap-4 md:grid-cols-3">
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="text-sm text-muted-foreground">Total Trades (30d)</div>
+            <div class="text-2xl font-bold mt-1"
+                 hx-get="/api/v1/trades/stats/count"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="h-8 w-16 skeleton rounded"></div>
+            </div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="text-sm text-muted-foreground">Total Volume (30d)</div>
+            <div class="text-2xl font-bold mt-1"
+                 hx-get="/api/v1/trades/stats/volume"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="h-8 w-24 skeleton rounded"></div>
+            </div>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-4">
+            <div class="text-sm text-muted-foreground">Most Traded Symbol</div>
+            <div class="text-2xl font-bold mt-1"
+                 hx-get="/api/v1/trades/stats/top-symbol"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="h-8 w-20 skeleton rounded"></div>
             </div>
         </div>
     </div>

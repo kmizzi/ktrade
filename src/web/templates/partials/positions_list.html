@@ -1,46 +1,89 @@
 {% if positions %}
-<div class="space-y-2">
-    {% for pos in positions %}
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-md border border-border p-3 hover:bg-muted/30 transition-colors gap-2">
-        <div class="flex items-center gap-3">
-            <div>
-                <span class="font-medium">{{ pos.symbol }}</span>
-                {% if pos.position_pct %}
-                <span class="text-xs text-muted-foreground ml-1">({{ pos.position_pct }}%)</span>
-                {% endif %}
-            </div>
-            <span class="text-sm text-muted-foreground">{{ "%.3f"|format(pos.quantity) if pos.quantity < 1 else "%.1f"|format(pos.quantity) }} @ ${{ "%.2f"|format(pos.entry_price) }}</span>
-        </div>
-        <div class="flex items-center justify-end gap-4 sm:gap-6">
-            <!-- Today's P&L -->
-            <div class="text-right">
-                <div class="text-xs text-muted-foreground mb-0.5">Today</div>
-                <div class="text-sm {% if pos.day_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
-                    {% if pos.day_pnl >= 0 %}+{% endif %}${{ "%.2f"|format(pos.day_pnl) }}
-                </div>
-                <div class="text-xs text-muted-foreground">
-                    {% if pos.day_pnl_pct >= 0 %}+{% endif %}{{ "%.2f"|format(pos.day_pnl_pct) }}%
-                </div>
-            </div>
-            <!-- All-time P&L -->
-            <div class="text-right">
-                <div class="text-xs text-muted-foreground mb-0.5">Total</div>
-                <div class="font-medium {% if pos.pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
-                    {% if pos.pnl >= 0 %}+{% endif %}${{ "%.2f"|format(pos.pnl) }}
-                </div>
-                <div class="text-xs text-muted-foreground">
-                    {% if pos.pnl_pct >= 0 %}+{% endif %}{{ "%.2f"|format(pos.pnl_pct) }}%
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
+<div class="overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead class="bg-muted/50">
+            <tr>
+                <th class="px-4 py-3 text-left font-medium text-muted-foreground">Symbol</th>
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Quantity</th>
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Entry</th>
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Current</th>
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Market Value</th>
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Today</th>
+                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Total P&L</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+            {% for pos in positions %}
+            <tr class="hover:bg-muted/30 transition-colors">
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium">{{ pos.symbol }}</span>
+                        {% if pos.position_pct %}
+                        <span class="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            {{ pos.position_pct }}%
+                        </span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-right font-mono">
+                    {{ "%.4f"|format(pos.quantity) if pos.quantity < 1 else "%.2f"|format(pos.quantity) }}
+                </td>
+                <td class="px-4 py-3 text-right font-mono">
+                    ${{ "{:,.2f}".format(pos.entry_price) }}
+                </td>
+                <td class="px-4 py-3 text-right font-mono">
+                    ${{ "{:,.2f}".format(pos.current_price) }}
+                </td>
+                <td class="px-4 py-3 text-right font-mono font-medium">
+                    ${{ "{:,.2f}".format(pos.market_value) }}
+                </td>
+                <td class="px-4 py-3 text-right">
+                    <div class="{% if pos.day_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                        <div class="font-medium">
+                            {% if pos.day_pnl >= 0 %}+{% endif %}${{ "%.2f"|format(pos.day_pnl) }}
+                        </div>
+                        <div class="text-xs opacity-75">
+                            {% if pos.day_pnl_pct >= 0 %}+{% endif %}{{ "%.2f"|format(pos.day_pnl_pct) }}%
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-right">
+                    <div class="{% if pos.pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                        <div class="font-medium">
+                            {% if pos.pnl >= 0 %}+{% endif %}${{ "%.2f"|format(pos.pnl) }}
+                        </div>
+                        <div class="text-xs opacity-75">
+                            {% if pos.pnl_pct >= 0 %}+{% endif %}{{ "%.2f"|format(pos.pnl_pct) }}%
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <!-- Summary Row -->
+        <tfoot class="bg-muted/50 border-t-2 border-border">
+            {% set total_value = positions|sum(attribute='market_value') %}
+            {% set total_day_pnl = positions|sum(attribute='day_pnl') %}
+            {% set total_pnl = positions|sum(attribute='pnl') %}
+            <tr class="font-medium">
+                <td class="px-4 py-3" colspan="4">Total ({{ positions|length }} position{% if positions|length != 1 %}s{% endif %})</td>
+                <td class="px-4 py-3 text-right font-mono">${{ "{:,.2f}".format(total_value) }}</td>
+                <td class="px-4 py-3 text-right {% if total_day_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                    {% if total_day_pnl >= 0 %}+{% endif %}${{ "%.2f"|format(total_day_pnl) }}
+                </td>
+                <td class="px-4 py-3 text-right {% if total_pnl >= 0 %}text-profit{% else %}text-loss{% endif %}">
+                    {% if total_pnl >= 0 %}+{% endif %}${{ "%.2f"|format(total_pnl) }}
+                </td>
+            </tr>
+        </tfoot>
+    </table>
 </div>
 {% else %}
-<div class="text-center py-8 text-muted-foreground">
-    <svg class="mx-auto h-12 w-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div class="text-center py-12 text-muted-foreground">
+    <svg class="mx-auto h-12 w-12 mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
     </svg>
-    <p>No open positions</p>
+    <p class="font-medium">No open positions</p>
+    <p class="text-sm mt-1">{% if current_filters and current_filters.q %}Try adjusting your search{% else %}Positions will appear here when trades are executed{% endif %}</p>
 </div>
 {% endif %}

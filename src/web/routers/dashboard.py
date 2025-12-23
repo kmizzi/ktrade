@@ -131,14 +131,40 @@ async def positions_partial(request: Request, db: Session = Depends(get_db_sessi
 
 
 @router.get("/partials/signals/recent", response_class=HTMLResponse)
-async def signals_partial(request: Request, db: Session = Depends(get_db_session)):
-    """Get recent signals partial for HTMX."""
+async def signals_partial(
+    request: Request,
+    db: Session = Depends(get_db_session),
+    limit: int = Query(50, le=100),
+    status: Optional[str] = None,
+    signal_type: Optional[str] = None,
+    strategy: Optional[str] = None,
+    sort: Optional[str] = None,
+    q: Optional[str] = None,
+):
+    """Get recent signals partial for HTMX with filtering."""
     try:
         service = SignalService(db)
-        signals = service.get_recent_signals(limit=5)
+        signals = service.get_signals(
+            limit=limit,
+            status=status,
+            signal_type=signal_type,
+            strategy=strategy,
+            sort=sort,
+            search=q
+        )
         return templates.TemplateResponse(
             "partials/signals_list.html",
-            {"request": request, "signals": signals}
+            {
+                "request": request,
+                "signals": signals,
+                "current_filters": {
+                    "status": status,
+                    "signal_type": signal_type,
+                    "strategy": strategy,
+                    "sort": sort or "time_desc",
+                    "q": q
+                }
+            }
         )
     except Exception as e:
         return templates.TemplateResponse(
