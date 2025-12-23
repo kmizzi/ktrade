@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 
-from src.database.models import Signal, SignalType
+from src.database.models import Signal as DBSignal, SignalType
 from src.api.alpaca_client import alpaca_client
 from config.settings import settings
 
@@ -26,16 +26,16 @@ class SignalService:
         executed: Optional[bool] = None
     ) -> List[Dict[str, Any]]:
         """Get signals with optional filters."""
-        query = self.db.query(Signal)
+        query = self.db.query(DBSignal)
 
         if strategy:
-            query = query.filter(Signal.strategy == strategy)
+            query = query.filter(DBSignal.strategy == strategy)
         if executed is not None:
-            query = query.filter(Signal.executed == executed)
+            query = query.filter(DBSignal.executed == executed)
 
         signals = (
             query
-            .order_by(desc(Signal.timestamp))
+            .order_by(desc(DBSignal.timestamp))
             .offset(offset)
             .limit(limit)
             .all()
@@ -48,9 +48,9 @@ class SignalService:
         # Get signals from the last 24 hours
         cutoff = datetime.utcnow() - timedelta(hours=24)
         signals = (
-            self.db.query(Signal)
-            .filter(Signal.timestamp >= cutoff)
-            .order_by(desc(Signal.timestamp))
+            self.db.query(DBSignal)
+            .filter(DBSignal.timestamp >= cutoff)
+            .order_by(desc(DBSignal.timestamp))
             .limit(limit)
             .all()
         )
@@ -92,12 +92,15 @@ class SignalService:
                         owned_symbols=owned_symbols
                     )
                     for signal in strategy_signals:
+                        # Convert string signal_type to SignalType enum
+                        signal_type_enum = SignalType(signal.signal_type)
+
                         # Save to database
-                        db_signal = Signal(
+                        db_signal = DBSignal(
                             symbol=signal.symbol,
                             timestamp=signal.timestamp,
-                            strategy=signal.strategy,
-                            signal_type=signal.signal_type,
+                            strategy=signal.strategy_name,  # Note: strategy_name not strategy
+                            signal_type=signal_type_enum,
                             confidence=signal.confidence,
                             data_snapshot=signal.data_snapshot,
                             executed=False,
@@ -116,10 +119,10 @@ class SignalService:
     def get_rejections(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Get rejected signals (signals that weren't executed)."""
         signals = (
-            self.db.query(Signal)
-            .filter(Signal.executed == False)
-            .filter(Signal.execution_notes.isnot(None))
-            .order_by(desc(Signal.timestamp))
+            self.db.query(DBSignal)
+            .filter(DBSignal.executed == False)
+            .filter(DBSignal.execution_notes.isnot(None))
+            .order_by(desc(DBSignal.timestamp))
             .limit(limit)
             .all()
         )
@@ -136,9 +139,9 @@ class SignalService:
         """Get rejection reason breakdown."""
         # Get counts of rejection reasons
         signals = (
-            self.db.query(Signal)
-            .filter(Signal.executed == False)
-            .filter(Signal.execution_notes.isnot(None))
+            self.db.query(DBSignal)
+            .filter(DBSignal.executed == False)
+            .filter(DBSignal.execution_notes.isnot(None))
             .all()
         )
 
@@ -157,7 +160,7 @@ class SignalService:
             ],
         }
 
-    def _signal_to_dict(self, signal: Signal) -> Dict[str, Any]:
+    def _signal_to_dict(self, signal: DBSignal) -> Dict[str, Any]:
         """Convert Signal model to dictionary."""
         # Determine execution status
         if signal.executed:
