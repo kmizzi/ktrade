@@ -44,15 +44,23 @@ class GridService:
         return status
 
     def _get_levels_summary(self, grid: GridState) -> Dict[str, Any]:
-        """Get summary of grid levels."""
+        """Get summary of grid levels with prices."""
         buy_levels = [l for l in grid.levels if l.order_type == "buy"]
         sell_levels = [l for l in grid.levels if l.order_type == "sell"]
+
+        # Sort by level number and extract prices
+        buy_prices = [{"level": l.level, "price": l.price, "status": l.status}
+                      for l in sorted(buy_levels, key=lambda x: abs(x.level))]
+        sell_prices = [{"level": l.level, "price": l.price, "status": l.status}
+                       for l in sorted(sell_levels, key=lambda x: x.level)]
 
         return {
             "buy_levels": len(buy_levels),
             "sell_levels": len(sell_levels),
             "lowest_buy": min((l.price for l in buy_levels), default=0),
             "highest_sell": max((l.price for l in sell_levels), default=0),
+            "buy_prices": buy_prices,
+            "sell_prices": sell_prices,
         }
 
     def _get_levels_detail(self, grid: GridState) -> List[Dict[str, Any]]:
