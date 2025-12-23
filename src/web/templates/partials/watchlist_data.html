@@ -1,5 +1,16 @@
 {% if watchlist %}
 <div class="space-y-1">
+    <!-- Header row -->
+    <div class="flex items-center justify-between px-2 py-1 text-xs text-muted-foreground border-b border-border mb-1">
+        <div class="flex items-center gap-2">
+            <span class="w-16">Symbol</span>
+            <span>Last Price</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <span>1D Change</span>
+            <span class="w-16 text-right">%</span>
+        </div>
+    </div>
     {% for item in watchlist %}
     <div class="flex items-center justify-between rounded-md px-2 py-2 hover:bg-muted/30 transition-colors {% if item.error %}opacity-50{% endif %}">
         <div class="flex items-center gap-2">
