@@ -131,6 +131,10 @@ class AlpacaClient:
                     "cost_basis": float(pos.cost_basis),
                     "unrealized_pl": float(pos.unrealized_pl),
                     "unrealized_plpc": float(pos.unrealized_plpc),
+                    "unrealized_intraday_pl": float(pos.unrealized_intraday_pl) if pos.unrealized_intraday_pl else 0,
+                    "unrealized_intraday_plpc": float(pos.unrealized_intraday_plpc) if pos.unrealized_intraday_plpc else 0,
+                    "change_today": float(pos.change_today) if pos.change_today else 0,
+                    "lastday_price": float(pos.lastday_price) if pos.lastday_price else 0,
                     "side": pos.side,
                 }
                 for pos in positions
