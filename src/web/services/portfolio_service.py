@@ -76,10 +76,11 @@ class PortfolioService:
             if first and last and first.total_value > 0:
                 total_return = ((last.total_value - first.total_value) / first.total_value) * 100
 
-            # Get all closed positions for win rate (all-time, not just 30 days)
+            # Get closed positions for win rate
             closed_positions = (
                 self.db.query(Position)
                 .filter(Position.status == PositionStatus.CLOSED)
+                .filter(Position.exit_date >= cutoff)
                 .all()
             )
 

@@ -9,6 +9,7 @@ from datetime import datetime
 import signal as sys_signal
 import time
 import threading
+import os
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -33,6 +34,18 @@ from src.data.stock_scanner import stock_scanner
 
 # Setup logging
 logger = setup_logging()
+
+# Heartbeat file for health monitoring
+HEARTBEAT_FILE = Path(project_root) / "data" / "bot_heartbeat"
+
+
+def update_heartbeat():
+    """Update heartbeat file to indicate bot is alive and processing."""
+    try:
+        HEARTBEAT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        HEARTBEAT_FILE.write_text(str(time.time()))
+    except Exception as e:
+        logger.warning("heartbeat_update_failed", error=str(e))
 
 # Initialize strategies
 strategies = []
@@ -573,10 +586,14 @@ def run_perpetual_strategy_loop():
     cycle_count = 0
     grid_interval = settings.grid_check_interval_minutes * 60  # Convert to seconds
     last_grid_run = 0
+    last_heartbeat_log = 0  # Track when we last logged heartbeat
 
     while not shutdown_requested:
         try:
             current_time = time.time()
+
+            # Always update heartbeat to indicate bot is alive
+            update_heartbeat()
 
             # Check if market is open
             market_open = alpaca_client.is_market_open()
@@ -588,13 +605,18 @@ def run_perpetual_strategy_loop():
                     run_grid_trading_cycle()
                     last_grid_run = current_time
 
+                # Log heartbeat every 5 minutes to show bot is alive
+                if (current_time - last_heartbeat_log) >= 300:
+                    clock = alpaca_client.get_clock()
+                    next_open = clock.get('next_open')
+                    logger.info(
+                        "bot_heartbeat_market_closed",
+                        next_open=str(next_open) if next_open else "unknown",
+                        cycles_run=cycle_count
+                    )
+                    last_heartbeat_log = current_time
+
                 # Wait before checking again
-                clock = alpaca_client.get_clock()
-                next_open = clock.get('next_open')
-                logger.debug(
-                    "market_closed_waiting",
-                    next_open=str(next_open) if next_open else "unknown"
-                )
                 time.sleep(60)
                 continue
 
